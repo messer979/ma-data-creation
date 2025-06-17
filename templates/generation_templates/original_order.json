@@ -1,0 +1,78 @@
+{
+  "StaticFields": {
+    "OrderType": "B2C",
+    "OriginFacilityId": "MA-DEV-L2",
+    "DestinationAddress.Country": "US",
+    "BillingMethodId": "Prepaid",
+    "MinimumStatus": "1000",
+    "MaximumStatus": "1000",
+    "MultipleShipmentEligible": true,
+    "DocumentsOnly": false,
+    "IsEstimationOrder": false,
+    "CreatedFromReleaseOrder": false,
+    "Cancelled": false,
+    "PostOfficeBoxDestination": false,
+    "MustShipTogetherRestricted": false
+  },
+  "ArrayLengths": {
+    "OriginalOrderLine": 1
+  },
+  "DynamicFields": {
+    "OriginalOrderId": "CM_ORDER"
+  },
+  "RandomFields": [
+    {
+      "FieldName": "CustomerId",
+      "FieldType": "string(10)"
+    },
+    {
+      "FieldName": "OrderPlacedDateTime",
+      "FieldType": "datetime(now)"
+    },
+    {
+      "FieldName": "PickupStartDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "PickupEndDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "DeliveryStartDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "DeliveryEndDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "DestinationAddress.FirstName",
+      "FieldType": "choice(John,Jane,Michael,Sarah,David,Lisa,Robert,Emily,James,Maria)"
+    },
+    {
+      "FieldName": "DestinationAddress.LastName",
+      "FieldType": "choice(Smith,Johnson,Williams,Brown,Jones,Garcia,Miller,Davis,Rodriguez,Martinez)"
+    },
+    {
+      "FieldName": "DestinationAddress.Address1",
+      "FieldType": "string(25)"
+    },
+    {
+      "FieldName": "DestinationAddress.City",
+      "FieldType": "choice(Atlanta,New York,Chicago,Los Angeles,Dallas,Phoenix,Philadelphia,Houston,San Antonio,San Diego)"
+    },
+    {
+      "FieldName": "DestinationAddress.State",
+      "FieldType": "choice(GA,NY,IL,CA,TX,AZ,PA,FL,OH,MI)"
+    },
+    {
+      "FieldName": "DestinationAddress.PostalCode",
+      "FieldType": "int(5)"
+    },
+    {
+      "FieldName": "DestinationAddress.Email",
+      "FieldType": "email"
+    }
+  ],
+  "LinkedFields": {}
+}

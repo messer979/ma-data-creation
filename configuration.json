@@ -1,0 +1,69 @@
+{
+  "description": "Template to endpoint mapping configuration",
+  "version": "1.0",
+  "base_url": "https://tests.sc.ma.co",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_SHARED_TOKEN",
+    "SelectedOrganization":"organization",
+    "SelectedLocation":"facility"
+  },
+  "endpoints": {
+    "facility": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_FAC_ImportFacilities",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Facility/Store data endpoint"
+    },
+    "item": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_ITM_ImportItems",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Product/Item data endpoint"
+    },
+    "vendor": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_VEN_ImportVendors",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Vendor data endpoint"
+    },
+    "po": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_RCV_ImportPO",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Purchase Order data endpoint"
+    },
+    "asn_item_level": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_RCV_ImportAsn",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "ASN Item Level data endpoint"
+    },
+    "asn_lpn_level": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_RCV_ImportAsn",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "ASN LPN Level data endpoint"
+    },
+    "ilpn": {
+      "endpoint": "/dcinventory/api/dcinventory/ilpn/createIlpnAndInventory",
+      "method": "POST",
+      "type":"array",
+      "dataWrapper":true,
+      "description": "ILPN data endpoint"
+    },
+    "original_order": {
+      "endpoint": "/xint/api/async/outbound/send?messageType=ANY_DCO_ImportOriginalOrders",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Customer Order data endpoint"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+    "StaticFields": {
+        "IlpnTypeId": "ILPN",
+        "Status": "3000",
+        "Inventory.InventoryContainerTypeId": "ILPN"
+    },
+    "DynamicFields": {
+        "IlpnId": "CM_ILPN"
+    },
+    "ArrayLengths": {
+        "Inventory": 1
+    },
+    "RandomFields": [
+        {
+            "FieldName": "AsnId",
+            "FieldType": "string(12)"
+        },
+        {
+            "FieldName": "PurchaseOrderId",
+            "FieldType": "string(12)"
+        },
+        {
+            "FieldName": "Inventory.OnHand",
+            "FieldType": "int(1,100)"
+        },
+        {
+            "FieldName": "Inventory.ItemId",
+            "FieldType": "choice(location1,location2,location3,location4)"
+        },
+        {
+            "FieldName": "CurrentLocationId",
+            "FieldType": "choice(location1,location2,location3,location4)"
+        }
+    ],
+    "LinkedFields": {
+        "IlpnId": [
+            "Inventory.InventoryContainerId"
+        ],
+        "CurrentLocationId": [
+            "Inventory.LocationId"
+        ]
+    }
+}

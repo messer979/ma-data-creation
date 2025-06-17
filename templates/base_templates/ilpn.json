@@ -1,0 +1,19 @@
+{
+    "IlpnId": "LPN01",
+    "IlpnTypeId": "ILPN",
+    "FinalDestinationFacilityId": null,
+    "CurrentLocationId": null,
+    "CurrentLocationTypeId": null,
+    "AsnId": "ASN01",
+    "PurchaseOrderId": "PO1",
+    "Inventory": [
+        {
+            "InventoryContainerId": "LPN01",
+            "InventoryContainerTypeId": "ILPN",
+            "OnHand": 2,
+            "LocationId": "A-AMB-01-066-A5",
+            "ItemId": "ITEM01"
+        }
+    ],
+    "Status": "3000"
+}

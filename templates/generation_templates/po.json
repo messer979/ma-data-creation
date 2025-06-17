@@ -1,0 +1,47 @@
+{
+    "StaticFields": {
+        "PurchaseOrderStatus": "2000",
+        "DestinationFacilityId": "MA-DEV-L2",
+        "Closed": false,
+        "Canceled": false,
+        "PurchaseOrderLine.QuantityUomId": "Unit",
+        "PurchaseOrderLine.Closed": false,
+        "PurchaseOrderLine.Canceled": false
+    },
+    "DynamicFields": {
+        "PurchaseOrderId": "CM_PO"
+    },
+    "ArrayLengths": {
+        "PurchaseOrderLine": 2
+    },
+    "RandomFields": [
+        {
+            "FieldName": "VendorId",
+            "FieldType": "choice(vendor1,vendor2,vendor3,vendor4)"
+        },
+        {
+            "FieldName": "PurchaseOrderLine.ItemId",
+            "FieldType": "choice(item1,item2,item3,item4)"
+        },
+        {
+            "FieldName": "PurchaseOrderLine.PurchaseOrderLineId",
+            "FieldType": "uuid"
+        },
+        {
+            "FieldName": "PurchaseOrderLine.OrderQuantity",
+            "FieldType": "int(10,500)"
+        },
+        {
+            "FieldName": "PurchaseOrderLine.ShippedQuantity",
+            "FieldType": "int(10,500)"
+        }
+    ],
+    "LinkedFields": {
+        "PurchaseOrderId": [
+            "PurchaseOrderLine.PurchaseOrderId"
+        ],
+        "PurchaseOrderLine.OrderQuantity": [
+            "PurchaseOrderLine.UnShippedQuantity"
+        ]
+    }
+}

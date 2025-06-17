@@ -1,0 +1,50 @@
+{
+    "StaticFields": {
+        "Style": "Shirt"
+    },
+    "DynamicFields": {
+        "ItemId": "CM_ITEM"
+    },
+    "ArrayLengths": {},
+    "RandomFields": [
+        {
+            "FieldName": "Volume",
+            "FieldType": "float(2,3,2)"
+        },
+        {
+            "FieldName": "Width",
+            "FieldType": "float(2,3,2)"
+        },
+        {
+            "FieldName": "Length",
+            "FieldType": "float(2,3,2)"
+        },
+        {
+            "FieldName": "Weight",
+            "FieldType": "float(2,3,2)"
+        },
+        {
+            "FieldName": "Height",
+            "FieldType": "float(1,12,2)"
+        },
+        {
+            "FieldName": "Conveyable",
+            "FieldType": "boolean"
+        },
+        {
+            "FieldName": "Season",
+            "FieldType": "string(12)"
+        },
+        {
+            "FieldName": "LastExportedDateTime",
+            "FieldType": "datetime(now)"
+        }
+    ],
+    "LinkedFields": {
+        "ItemId": [
+            "PrimaryBarCode",
+            "ShortDescription",
+            "Description"
+        ]
+    }
+}

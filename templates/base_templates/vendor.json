@@ -1,0 +1,13 @@
+{
+    "VendorId": "VEN01",
+    "CompanyName": "Vendor01",
+    "VendorPerformanceGroupId": "GLD",
+    "VendorCategoryId": null,
+    "VendorContact": [],
+    "Extended": {},
+    "CompanyAddress": null,
+    "VanProviderId": null,
+    "Active": true,
+    "CorporateVendor": false,
+    "ParentCorporateVendorId": null
+}
