@@ -1,0 +1,7 @@
+streamlit
+requests
+faker
+pandas
+python-dateutil
+streamlit_ace
+flask
