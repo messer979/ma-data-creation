@@ -40,7 +40,7 @@ load_initial_config_to_session()
 def main():
     """Main Streamlit application with separated concerns"""
     # Title and description
-    st.title("🚀 Data Creation Tool")
+    st.title("🚀 Rapid Active Data")
     st.markdown("Generate massive amounts of test data using JSON templates and send via API calls")
     theme = st.get_option("theme.base")
     try:
