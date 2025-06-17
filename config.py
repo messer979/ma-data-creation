@@ -13,7 +13,7 @@ DEFAULT_API_HEADERS = {
 
 # App Configuration
 PAGE_CONFIG = {
-    'page_title': "Data Creation Tool",
+    'page_title': "Rapid Active Data",
     'page_icon': "🚀",
     'layout': "wide",
     'initial_sidebar_state': "expanded"
