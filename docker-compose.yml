@@ -1,8 +1,10 @@
 version: '3.8'
 
 services:
+  # Redis service - Message broker and result backend for Celery
   redis:
     image: redis:7-alpine
+    container_name: ma-data-redis
     ports:
       - "6379:6379"
     volumes:
@@ -12,9 +14,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
 
+  # Main Streamlit application
   app:
     build: .
+    container_name: ma-data-app
     ports:
       - "8080:8080"
     depends_on:
@@ -27,30 +32,13 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/_stcore/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  celery-worker:
-    build: .
-    command: celery -A celery_app worker --loglevel=info --concurrency=4
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
     restart: unless-stopped
 
-  celery-beat:
+  # Celery worker for background task processing
+  celery-worker:
     build: .
-    command: celery -A celery_app beat --loglevel=info
+    container_name: ma-data-celery-worker
+    command: celery -A celery_app worker --loglevel=info --concurrency=4
     depends_on:
       redis:
         condition: service_healthy

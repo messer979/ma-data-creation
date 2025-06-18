@@ -15,23 +15,10 @@ from scripts.inventory_transfer import write_inv, write_log
 import threading
 import queue
 
-# Load environment variables from .env file if it exists
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    # python-dotenv not installed, skip loading .env file
-    pass
-
-# Get Redis URL from environment variable, fallback to localhost for development
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', REDIS_URL)
-
 celery = Celery(
     'data_import',
-    broker=CELERY_BROKER_URL,
-    backend=CELERY_RESULT_BACKEND
+    broker='redis://localhost:6379/0',
+    backend='redis://localhost:6379/0'
 )
 
 
