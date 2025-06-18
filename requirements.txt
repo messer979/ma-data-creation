@@ -7,3 +7,4 @@ celery
 redis
 flask
 faker
+python-dotenv
