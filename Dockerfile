@@ -17,6 +17,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker layer caching
@@ -29,7 +30,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p .streamlit logs __pycache__
+RUN mkdir -p .streamlit logs __pycache__ data
+
+# Make entrypoint script executable
+RUN chmod +x entrypoint.sh
 
 # Ensure proper permissions
 RUN chmod +x app.py
@@ -47,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Run the application
-CMD ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]
+ENTRYPOINT ["./entrypoint.sh"]
