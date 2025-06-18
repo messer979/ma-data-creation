@@ -1,7 +1,9 @@
 streamlit
-requests
-faker
+streamlit_ace
 pandas
 python-dateutil
-streamlit_ace
+requests
+celery
+redis
 flask
+faker
