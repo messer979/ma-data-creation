@@ -41,12 +41,10 @@ def guide_modal():
         4. **Set up API endpoints** (optional)
         5. **Generate and send data** to your target system
         6. **Export templates** before closing to save your work
-        
-        ### Main Sections:
+          ### Main Sections:
         - **📊 Data Generation**: Main interface for creating data
         - **🗂️ Template Management**: Manage base and generation templates (session-only)
         - **🔧 Endpoint Config**: Configure API endpoints and authentication
-        - **📊 Data Import**: Import external data
         """)
     
     with tab2:
@@ -100,8 +98,6 @@ def guide_modal():
         
         ### 💾 Session Storage:
         - **Both template types** stored in browser session only
-        - **Example templates** auto-loaded from disk on startup
-        - **Your modifications** exist only in current session
         - **Export before closing** to save your customizations
         - **Import to restore** previously exported templates
         
@@ -160,8 +156,7 @@ def guide_modal():
             "IsEnabled": true
         }
         ```
-        
-        **🔢 DynamicFields:** Auto-incrementing values
+          **🔢 DynamicFields:** Auto-incrementing values
         ```json
         "DynamicFields": {
             "ItemId": "CM_ITEM",
@@ -171,6 +166,7 @@ def guide_modal():
         - `{{dttm}}` gets replaced with current date MMDD format
         - Fields increment automatically: `CM_ITEM_001`, `CM_ITEM_002`, etc.
         - **Array fields** increment per-record: Each ASN's lines start at 1
+        - **Array length support**: Compatible with `ArrayLengths` specification
         
         **🎲 RandomFields:** Random values based on type
         ```json
@@ -200,31 +196,35 @@ def guide_modal():
             "ItemId": ["PrimaryBarCode", "Description"]
         }
         ```
-        
-        **📊 ArrayLengths:** Define array sizes for automatic expansion
+          **📊 ArrayLengths:** Define array sizes for automatic expansion
         ```json
         "ArrayLengths": {
             "AsnLine": 2,
-            "OrderLines": 3
+            "OrderLines": 3,
+            "Lpn.LpnDetail": "int(1,5)"
         }
         ```
         - When defined, `AsnLine.ItemId` automatically applies to all array elements
         - No need to manually specify `AsnLine.0.ItemId`, `AsnLine.1.ItemId`
-        
-        ### Field Types:
+        - **Dynamic lengths**: Use `int(min,max)` for random array sizes
+        - **Nested arrays**: Supports dot notation (e.g., `Lpn.LpnDetail`)
+          ### Field Types:
         - `int(min,max)` - Random integer
         - `float(min,max,precision)` - Random decimal with specified precision
+        - `float(min,max)` - Random decimal (default 2 decimals)
+        - `float` - Random decimal 0-100 (default 2 decimals)
         - `string(length)` - Random alphanumeric string
         - `choice(opt1,opt2,opt3)` - Random selection from options
         - `choiceUnique(opt1,opt2,opt3)` - Unique selection within array siblings (auto-fallback when exhausted)
         - `datetime(now|future|past)` - Date/time generation
         - `boolean` - True/false values
         - `uuid` - UUID string generation
-        
-        ### Nested Fields:
+        - `email` - Random email addresses
+          ### Nested Fields:
         Use dot notation for nested objects and arrays:
         - `Address.City` - City field in Address object
         - `AsnLine.ItemId` - ItemId in AsnLine array (auto-expands with ArrayLengths)
+        - `Lpn.LpnDetail.QuantityUomId` - Multi-level nested arrays (up to 4 levels)
         
         ### 💾 Session-Only Storage:
         - **All generation templates** stored in browser session only
@@ -233,7 +233,8 @@ def guide_modal():
         - **Export before closing** to save your customizations
         """)
     
-    with tab5:        st.markdown("""
+    with tab5:        
+        st.markdown("""
         ## 🛠️ Template Manager (Session-Only)
         
         The Template Manager provides tools for managing, editing, and organizing your templates in session memory only.
@@ -254,19 +255,19 @@ def guide_modal():
         - **Quick overview** via sidebar expanders
         
         ### Features:
-        
-        **📝 Template Editing:**
+          **📝 Template Editing:**
         - **Visual editor** for both template types
         - **JSON syntax validation** with error checking
         - **Live preview** of template structure
         - **Session-only modifications** (temporary)
-        
-        **📥📤 Session Import/Export:**
+        - **Real-time template testing** with small data generation
+          **📥📤 Session Import/Export:**
         - **Export templates** to JSON files for backup
         - **Import templates** from backup files (session-only)
         - **Bulk operations** for multiple templates
         - **Template validation** during import/export
         - **Filename prefixes** indicate session-only export
+        - **Separate handling** for base and generation templates
         
         **🔍 Template Analysis:**
         - **Real-time overview** of loaded templates
@@ -302,14 +303,19 @@ def guide_modal():
         - **Export is your only permanent storage**
         - **Import only loads to current session**
         - **Server remains completely stateless**
-        
-        ### Template Validation:
+          ### Template Validation:
         The manager automatically checks for:
         - **Valid JSON syntax** in both template types
         - **Required field structures** for generation templates
         - **Field type formatting** and syntax
         - **ArrayLengths consistency** with base templates
-        - **LinkedFields dependencies** and references
+        - **LinkedFields dependencies** and references        - **Template structure validation** during imports
+        
+        ### 📊 Data Preview & Download:
+        - **JSON and CSV export** of generated data
+        - **Code view toggle** for better JSON inspection
+        - **Batch data preview** (first 3 records shown)
+        - **Real-time payload preview** before API sending
         """)
     
     st.markdown("---")
@@ -320,4 +326,5 @@ def guide_modal():
     with col2:
         st.markdown("⚠️ **Remember**: Export templates before closing - session-only storage!")
         st.markdown("📋 **Quick Check**: Use sidebar expanders to see loaded template counts.")
+        st.markdown("🔍 **Testing**: Try small record counts first to validate templates.")
 
