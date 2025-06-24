@@ -3,14 +3,12 @@ Active Inventory Transfer Module
 Converts the active_inventory.py script into a callable function
 """
 
-from pymawm import ActiveWM
 import sqlite3
 import pandas as pd
 import re
 import time
 from copy import deepcopy
 from typing import Dict, List, Any
-import streamlit as st
 import json
 
 def is_production(url: str) -> bool:

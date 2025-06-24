@@ -67,10 +67,6 @@ temp/
 *.db
 *.sqlite3
 
-# Celery (not needed for Cloud Run deployment)
-celery_app.py
-tasks.py
-
 # Zip files
 *.zip
 
