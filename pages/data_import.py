@@ -17,6 +17,20 @@ from pandas import read_json
 from celery_app import celery
 from celery_app import run_transfer_task
 
+testing = True
+if testing:
+    from_token_test = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyT3JncyI6WyJVU0FfREMiLCI5OTAwNCIsIjk5MDA1IiwiOTkwMTgiLCI5OTAwNyIsIjk5MDA2Il0sInVzZXJfbmFtZSI6ImNtZXNzZXJAbWFuaC5jb20iLCJ1c2VyTG9jYXRpb25zIjpbeyJsb2NhdGlvbklkIjoiOTkwMDQiLCJsb2NhdGlvblR5cGUiOiJkdW1teSJ9LHsibG9jYXRpb25JZCI6Ijk5MDA1IiwibG9jYXRpb25UeXBlIjoiZHVtbXkifSx7ImxvY2F0aW9uSWQiOiI5OTAxOCIsImxvY2F0aW9uVHlwZSI6ImR1bW15In0seyJsb2NhdGlvbklkIjoiOTkwMDciLCJsb2NhdGlvblR5cGUiOiJkdW1teSJ9LHsibG9jYXRpb25JZCI6Ijk5MDA2IiwibG9jYXRpb25UeXBlIjoiZHVtbXkifV0sImxvY2FsZSI6ImVuIiwiZXhjbHVkZWRVc2VyQnVzaW5lc3NVbml0cyI6W10sImF1dGhvcml0aWVzIjpbIlJPTEVfQ29ycF9BZG1pbiIsIlJPTEVfcmVwb3J0aW5nX2FkbWluIiwiUk9MRV9VU0VSIl0sImNsaWVudF9pZCI6Inp1dWxzZXJ2ZXIuMS4wLjAiLCJ1c2VyVGltZVpvbmUiOiJVUy9FYXN0ZXJuIiwiZWRnZSI6MCwic2NvcGUiOlsib21uaSJdLCJvcmdhbml6YXRpb24iOiJVU0FfREMiLCJhY2Nlc3N0b0FsbEJVcyI6ZmFsc2UsInRlbmFudElkIjoiZHRyZXN2cjExbyIsImV4cCI6MTc1MDgxMzQxMiwidXNlckRlZmF1bHRzIjpbeyJkZWZhdWx0TG9jYXRpb24iOiI5OTAxOCIsImRlZmF1bHRPcmdhbml6YXRpb24iOiI5OTAxOCIsImRlZmF1bHRCdXNpbmVzc1VuaXQiOm51bGx9XSwianRpIjoiNDYzYmI5YTAtOWE0Zi00MDYwLWI5MjItOGU5MDg5YTEyNzdiIiwidXNlckJ1c2luZXNzVW5pdHMiOltdfQ.AZYIXAsSZgVXUw15DU5w4QYrn8gDgNLKXCflW-7k85CESjJpQTFJLGKbO2HCt_EElYNF0M_k_bc0tw80I2uHcwJ7QAMS4f54LTVRLbLCIaOXiuMn2sjdMWrMSP7F9yaZH8hMOiTVOb6tt6kFQKqxw3FIoSVXyDAdAMRo0JYbeNF5b7oitpQajHV5ylLcwW0LrTnKTHCTq9edDXG4z992lp-88493-LSUzkZlvSA13O4EVEv-fuNshbVZ0IG_1QxqtuYbipq7-qZLwJITWtt9oi0LhPIWYvc8VywRL4gzjTbBpyCoDO1K7y9CnwslNhtOqP0IjM8vilBuFbvNi5keBg'
+    from_env_test = 'https://dtrev.sce.manh.com'
+    from_org_test = '99005'
+    from_facility_test = '99005'
+
+    to_token_test = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyT3JncyI6WyJVU0FfREMiLCI5OTAwNCIsIjk5MDA1IiwiOTkwMTgiLCI5OTAwNyIsIjk5MDA2Il0sInVzZXJfbmFtZSI6ImNtZXNzZXJAbWFuaC5jb20iLCJ1c2VyTG9jYXRpb25zIjpbeyJsb2NhdGlvbklkIjoiOTkwMDQiLCJsb2NhdGlvblR5cGUiOiJkdW1teSJ9LHsibG9jYXRpb25JZCI6Ijk5MDA1IiwibG9jYXRpb25UeXBlIjoiZHVtbXkifSx7ImxvY2F0aW9uSWQiOiI5OTAxOCIsImxvY2F0aW9uVHlwZSI6ImR1bW15In0seyJsb2NhdGlvbklkIjoiOTkwMDciLCJsb2NhdGlvblR5cGUiOiJkdW1teSJ9LHsibG9jYXRpb25JZCI6Ijk5MDA2IiwibG9jYXRpb25UeXBlIjoiZHVtbXkifV0sImxvY2FsZSI6ImVuIiwiZXhjbHVkZWRVc2VyQnVzaW5lc3NVbml0cyI6W10sImF1dGhvcml0aWVzIjpbIlJPTEVfQ29ycF9BZG1pbiIsIlJPTEVfcmVwb3J0aW5nX2FkbWluIiwiUk9MRV9VU0VSIl0sImNsaWVudF9pZCI6Inp1dWxzZXJ2ZXIuMS4wLjAiLCJ1c2VyVGltZVpvbmUiOiJVUy9FYXN0ZXJuIiwiZWRnZSI6MCwic2NvcGUiOlsib21uaSJdLCJvcmdhbml6YXRpb24iOiJVU0FfREMiLCJhY2Nlc3N0b0FsbEJVcyI6ZmFsc2UsInRlbmFudElkIjoiZHRyZXN2cjExbyIsImV4cCI6MTc1MDgxMzQxMiwidXNlckRlZmF1bHRzIjpbeyJkZWZhdWx0TG9jYXRpb24iOiI5OTAxOCIsImRlZmF1bHRPcmdhbml6YXRpb24iOiI5OTAxOCIsImRlZmF1bHRCdXNpbmVzc1VuaXQiOm51bGx9XSwianRpIjoiNDYzYmI5YTAtOWE0Zi00MDYwLWI5MjItOGU5MDg5YTEyNzdiIiwidXNlckJ1c2luZXNzVW5pdHMiOltdfQ.AZYIXAsSZgVXUw15DU5w4QYrn8gDgNLKXCflW-7k85CESjJpQTFJLGKbO2HCt_EElYNF0M_k_bc0tw80I2uHcwJ7QAMS4f54LTVRLbLCIaOXiuMn2sjdMWrMSP7F9yaZH8hMOiTVOb6tt6kFQKqxw3FIoSVXyDAdAMRo0JYbeNF5b7oitpQajHV5ylLcwW0LrTnKTHCTq9edDXG4z992lp-88493-LSUzkZlvSA13O4EVEv-fuNshbVZ0IG_1QxqtuYbipq7-qZLwJITWtt9oi0LhPIWYvc8VywRL4gzjTbBpyCoDO1K7y9CnwslNhtOqP0IjM8vilBuFbvNi5keBg'
+    to_env_test = 'https://dtres.sce.manh.com'
+    to_org_test = 'MANHD-005'
+    to_facility_test = 'MANHD-005'
+else:
+    from_token, from_env, from_org, from_facility, to_token, to_env, to_org, to_facility = (None,) * 8
+
 # Use a unique log file per transfer (per user/session)
 if 'transfer_log_uuid' not in st.session_state:
     st.session_state['transfer_log_uuid'] = None
@@ -72,23 +86,66 @@ with tab1:
         token = ''
         with col1:
             st.markdown("**Source Environment**")
-            from_env = st.text_input("From Environment (Full URL)", placeholder="https://dev01.sce.ma.com", help="Source environment full URL (e.g., https://dev01.sce.ma.com)")
-            from_org = st.text_input("From Organization", placeholder="MA", help="Source organization code")
-            from_facility = st.text_input("From Facility", placeholder="DC01", help="Source facility code")
-            from_token = st.text_input("From Token", type="password", help="Source environment API token")
+            from_env = st.text_input(
+                "From Environment (Full URL)", 
+                value = from_env_test,
+                placeholder="https://dev01.sce.ma.com", 
+                help="Source environment full URL (e.g., https://dev01.sce.ma.com)")
+            from_org = st.text_input(
+                "From Organization", 
+                value = from_org_test,
+                placeholder="MA", 
+                help="Source organization code")
+            from_facility = st.text_input(
+                "From Facility", 
+                value = from_facility_test,
+                placeholder="DC01", 
+                help="Source facility code")
+            from_token = st.text_input(
+                "From Token",
+                value = from_token_test,
+                type="password", 
+                help="Source environment API token")
         
         with col2:
             st.markdown("**Target Environment**")
-            to_env = st.text_input("To Environment (Full URL)", placeholder="https://test01.sce.ma.com", help="Target environment full URL (e.g., https://test01.sce.ma.com)")
-            to_org = st.text_input("To Organization", placeholder="MA", help="Target organization code")
-            to_facility = st.text_input("To Facility", placeholder="DC01", help="Target facility code")
-            to_token = st.text_input("To Token", type="password", help="Target environment API token")
+            to_env = st.text_input(
+                "To Environment (Full URL)", 
+                value = to_env_test,
+                placeholder="https://test01.sce.ma.com", 
+                help="Target environment full URL (e.g., https://test01.sce.ma.com)")
+            to_org = st.text_input(
+                "To Organization", 
+                value = to_org_test,
+                placeholder="MA", 
+                help="Target organization code")
+            to_facility = st.text_input(
+                "To Facility", 
+                value = to_facility_test,
+                placeholder="DC01", 
+                help="Target facility code")
+            to_token = st.text_input(
+                "To Token", 
+                value = to_token_test,
+                type="password", 
+                help="Target environment API token")
         
         st.markdown("**Transfer Settings**")
         col3, col4, col5 = st.columns(3)
         
         with col3:
-            zone = st.text_input("Zone", placeholder="Enter zone (e.g. SC or ZONE1)", value="SC", help="Zone being transferred")
+            attribute_type = st.selectbox(
+                "Filter By", 
+                options=["Zone", "Area", "Aisle", "PickExecutionZoneId", "PickAllocationZoneId"],
+                index=0,
+                help="Select the type of attribute to filter inventory by"
+            )
+            attribute_value = st.text_input(
+                f"{attribute_type.title()} Value", 
+                placeholder=f"Enter {attribute_type} (e.g. SC, ZONE1, A01)", 
+                value="",
+                help=f"Specific {attribute_type} value to filter inventory transfer"
+            )
 
         
         with col4:
@@ -106,7 +163,7 @@ with tab1:
             st.error("❌ Cannot use a production environment (subdomain ending in 'p') for source or target!")
         can_submit = not prod_env and all([
             from_env, from_org, from_facility, from_token,
-            to_env, to_org, to_facility, to_token, zone
+            to_env, to_org, to_facility, to_token, attribute_value
         ])
         if st.form_submit_button("🚀 Start Transfer", type="primary", use_container_width=True, disabled=not can_submit):
             st.session_state.submitted = True
@@ -123,7 +180,7 @@ with tab1:
             'To Organization': to_org,
             'To Facility': to_facility,
             'To Token': to_token,
-            'Zone': zone
+            f'{attribute_type.title()}': attribute_value
         }
         missing_fields = [name for name, value in required_fields.items() if not value]
         
@@ -147,7 +204,8 @@ with tab1:
                 'to_org': to_org,
                 'to_facility': to_facility,
                 'to_token': to_token,
-                'zone': zone,
+                'filter_type': attribute_type,
+                'filter_value': attribute_value,
                 'download_batch_size': download_batch_size,
                 'upload_batch_size': upload_batch_size
             }
