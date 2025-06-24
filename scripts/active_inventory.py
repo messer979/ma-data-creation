@@ -71,13 +71,21 @@ if missing_keys:
 
 
 ## get tokens for from env and to env
-from_environment = f"https://{from_env}.sce.manh.com"
-active_from = ActiveWM(environment = from_environment, default_org=from_org, default_facility=from_facility, manual_token=from_token)
-active_from.verbose = False
+from_url = f"https://{from_env}.sce.manh.com"
+# active_from = ActiveWM(environment = from_environment, default_org=from_org, default_facility=from_facility, manual_token=from_token)
+from_headers = {
+    "SelectedOrganization": from_org,
+    "SelectedLocation": from_facility,
+    "Authorization": f"Bearer {from_token}",
+}
 
-to_environment = f"https://{to_env}.sce.manh.com"
-active_to = ActiveWM(environment = to_environment, default_org=to_org, default_facility=to_facility, manual_token=to_token)
-active_to.verbose = False
+to_url = f"https://{to_env}.sce.manh.com"
+# active_to = ActiveWM(environment = to_environment, default_org=to_org, default_facility=to_facility, manual_token=to_token)
+to_headers = {
+    "SelectedOrganization": to_org,
+    "SelectedLocation": to_facility,
+    "Authorization": f"Bearer {from_token}",
+}
 
 if isProduction(active_to.wm_app):
     logger.error("cannot import to production")
@@ -88,19 +96,22 @@ if isProduction(active_to.wm_app):
 # begin downloading from env api to sqlite file 
 
 data = {"LocationQuery":{"Query":f"Zone ={zone} and InventoryReservationTypeId=LOCATION"}, "Size":1}
-res = active_from.dci.post_inv_search(data)
+# res = active_from.dci.post_inv_search(data)
+inv_search_endpoint = '/dcinventory/api/dcinventory/inventory/inventorysearch'
+res = requests.post(from_url + inv_search_endpoint, headers=from_headers, json=data)
 
 # download_batch_size = args.download_batch_size
 download_batch_size = 200
-total = res.header['totalCount']
+TODO total = res.header['totalCount']
 number_of_batches = math.ceil(int(total)/download_batch_size)
 
 print('downloading inventory files to staging_table.db')
 for i in range(0,number_of_batches):
     print(f'downloading batch {i} of {number_of_batches}')
     data = {"LocationQuery":{"Query":f"Zone ={zone} and InventoryReservationTypeId=LOCATION"}, "Size":download_batch_size, "Page":i}
-    res = active_from.dci.post_inv_search(data)
-    write_inv(f"inventory_transfer_{zone}", res.data)
+    # res = active_from.dci.post_inv_search(data)
+    res = requests.post(from_url + inv_search_endpoint, headers=from_headers, json=data)
+    write_inv(f"inventory_transfer_{zone}", res.json()['data'])
     time.sleep(2)
 
 
@@ -117,14 +128,18 @@ items = list(df.ItemId)
 download_batch_size = 50
 total = len(items)
 number_of_batches = math.ceil(int(total)/download_batch_size)
+item_search_ep = '/item-master/api/item-master/item/search'
 print(f'processing items')
 for i in range(0,number_of_batches):
     print(f'running batch {i}')
     item_query = items[download_batch_size*i:download_batch_size*(i+1)]
     data = {"query":f"ItemId in ({','.join(item_query)})", "size":50}
-    res = active_from.itm.search_item(**data)
+    # res = active_from.itm.search_item(**data)
+    res = requests.post(from_url + item_search_ep, headers = from_headers, json=data)
+
     print(f"search request: {res}")
     res_save = active_to.itm.bulk_import_item(res.data)
+    res = requests.post(to_url + bulk_item, headers = from_headers, json=data)
     print(f"bulk import: {res_save}")
 
 print(f"running sync")
