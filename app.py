@@ -25,7 +25,9 @@ from components.app_components import (
 from components.sidebar import render_sidebar
 from data_creation.data_operations import handle_generate_button_click
 import json
+from dotenv import load_dotenv
 
+load_dotenv()
 # Page configuration
 st.set_page_config(**PAGE_CONFIG)
 

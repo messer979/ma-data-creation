@@ -9,7 +9,7 @@ def render_sidebar():
         st.page_link('app.py', label='Data Creator', icon='🚀')
         st.page_link('pages/template_management.py', label='Template Management', icon='🗂️')
         st.page_link('pages/endpoint_management.py', label='Endpoint Management', icon='🔧')
-        # st.page_link('pages/data_import.py', label='Data Import', icon='📊')
+        st.page_link('pages/data_import.py', label='Data Import', icon='📊')
         if st.button("❓ Help", help="Open Help Guide for Data Creation Tool"):
             guide_modal()
         st.markdown("---")

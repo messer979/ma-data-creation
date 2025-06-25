@@ -20,7 +20,7 @@ echo "🚀 Starting container..."
 docker run -d \
     --name ma-data-app \
     -p 8080:8080 \
-    -p 6379:6379 \
+    -p 2222:22 \
     -v "$(pwd)/logs:/app/logs" \
     -v "$(pwd)/data:/app/data" \
     -v ma-data-redis-volume:/var/lib/redis \
