@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # All-in-one service: Streamlit app, Redis, and Celery worker
   app:
@@ -8,6 +6,7 @@ services:
     ports:
       - "8080:8080"
       - "6379:6379"
+      - "2222:22"  # SSH access
     environment:
       - REDIS_URL=redis://localhost:6379/0
       - CELERY_BROKER_URL=redis://localhost:6379/0

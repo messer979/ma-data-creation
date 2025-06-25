@@ -14,6 +14,7 @@ from datetime import datetime
 from scripts.inventory_transfer import write_inv, write_log
 import threading
 import queue
+from scripts.data_transfer_sync import run_transfer_sync  # Import the standalone sync function
 
 celery = Celery(
     'data_import',
@@ -21,27 +22,32 @@ celery = Celery(
     backend='redis://localhost:6379/0'
 )
 
+INV_SEARCH_EP = '/dcinventory/api/dcinventory/inventory/inventorysearch'
+ITEM_SEARCH_EP = '/item-master/api/item-master/item/search'
+ITEM_BULK_EP = '/item-master/api/item-master/item/bulkImport'
+ADJUST_EP = '/dcinventory/api/dcinventory/inventory/adjustAbsoluteQuantity'
+ITEM_SYNC_EP = '/item-master/api/item-master/item/v2/search'
 
 def db_writer(db_queue, db_name, db_write_done):
     while True:
         item = db_queue.get()
         if item is None:
             break  # Sentinel value to stop the thread
-        batch_data, zone = item
+        batch_data, filter_type = item
         time.sleep(1)  # delay before each write to ensure the previous is done 
-        write_inv(db_name, f"inventory_transfer_{zone}", batch_data)
+        write_inv(db_name, f"inventory_transfer_{filter_type}", batch_data)
         db_queue.task_done()
     db_write_done.set()
 
 
-def upload_inv_batch(active_to, log_file, data, batch_start, batch_end, zone):
+def upload_inv_batch(to_url, to_headers, log_file, data, batch_start, batch_end, filter_value):
     try:
-        res = active_to.dci.post_absolute_adjust_inventory(json.dumps(data))
+        res = requests.post(to_url + ADJUST_EP, headers=to_headers, json=data)
         write_log(log_file, {
             "timestamp": datetime.now().isoformat(),
             "status": "RUNNING",
-            "message": f"Uploaded batch {batch_start}-{batch_end} for zone {zone}",
-            "response_status": res.full_response.status_code,
+            "message": f"Uploaded batch {batch_start}-{batch_end} for {filter_value}",
+            "response_status": res.status_code,
             "response": res.json(),
         })
     except (requests.exceptions.SSLError, requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError):
@@ -49,19 +55,32 @@ def upload_inv_batch(active_to, log_file, data, batch_start, batch_end, zone):
         # Optionally, you could retry here or log a failure
 
 # Download and process items in batches
-def download_and_import_item_batch(active_from, active_to, log_file, item_batches, item_query, batch_num):
+def download_and_import_item_batch(from_url, from_headers, to_url, to_headers, log_file, item_batches, item_query, batch_num):
     data = {"query": f"ItemId in ({','.join(item_query)})", "size": 50}
-    res = active_from.itm.search_item(**data)
+    res = requests.post(from_url + ITEM_SEARCH_EP, headers=from_headers, json=data)
+    data = res.json()['data']
+    res_save = requests.post(to_url + ITEM_BULK_EP, headers=to_headers, json={"data":data})
     write_log(log_file, {
         "timestamp": datetime.now().isoformat(),
         "status": "RUNNING",
-        "message": f"Downloading item batch {batch_num+1}/{item_batches}",
-        "response_status": res.full_response.status_code,
-        "response": res.json(),
+        "message": f"Transferred item batch {batch_num+1}/{item_batches}.\nSearch: {res.status_code}, BulkImport: {res_save.status_code}",
+        "response_status": res.status_code,
+        "response": None,
     })
-    res_save = active_to.itm.bulk_import_item(res.data)
     return True
 
+def request_failed(res, log_file):
+    if res.status_code != 200:
+        write_log(log_file, {
+            "timestamp": datetime.now().isoformat(),
+            "status": "FAILED",
+            "message": f"Request failed with status {res.status_code}",
+            "response_status": res.status_code,
+            "response": res.json(),
+        })
+        return True
+    else:
+        return False
 
 
 @celery.task(bind=True)
@@ -71,7 +90,8 @@ def run_transfer_task(self, config, log_file):
     try:
         # Validate configuration        
         # Extract configuration
-        zone = config['zone']
+        filter_type = config['filter_type']
+        filter_value = config['filter_value']
         download_batch_size = int(config['download_batch_size'])
         upload_batch_size = int(config['upload_batch_size'])
         
@@ -97,39 +117,40 @@ def run_transfer_task(self, config, log_file):
             return False
 
         # Setup environments
-        from_environment = f"https://{from_env}.sce.manh.com"
-        active_from = ActiveWM(
-            environment=from_environment,
-            default_org=from_org,
-            default_facility=from_facility,
-            manual_token=from_token
-        )
-        active_from.verbose = False
-        
-        to_environment = f"https://{to_env}.sce.manh.com"
-        active_to = ActiveWM(
-            environment=to_environment,
-            default_org=to_org,
-            default_facility=to_facility,
-            manual_token=to_token
-        )
-        active_to.verbose = False
+        from_url = f"https://{from_env}.sce.manh.com"
+        # active_from = ActiveWM(environment = from_environment, default_org=from_org, default_facility=from_facility, manual_token=from_token)
+        from_headers = {
+            "SelectedOrganization": from_org,
+            "SelectedLocation": from_facility,
+            "Authorization": f"Bearer {from_token}",
+        }
+                
+        to_url = f"https://{to_env}.sce.manh.com"
+        # active_to = ActiveWM(environment = to_environment, default_org=to_org, default_facility=to_facility, manual_token=to_token)
+        to_headers = {
+            "SelectedOrganization": to_org,
+            "SelectedLocation": to_facility,
+            "Authorization": f"Bearer {from_token}",
+        }
         self.update_state(state='PROGRESS')
         
         # Download inventory data
         data = {
-            "LocationQuery": {"Query": f"Zone ={zone} and InventoryReservationTypeId=LOCATION"},
+            "LocationQuery": {"Query": f"{filter_type} ={filter_value} and InventoryReservationTypeId=LOCATION"},
             "Size": 1
         }
-        res = active_from.dci.post_inv_search(data)
+        res = requests.post(from_url + INV_SEARCH_EP, headers=from_headers, json=data)
+        if request_failed(res, log_file):
+            return False
+
         write_log(log_file, {
             "timestamp": datetime.now().isoformat(),
             "status": "RUNNING",
-            "message": f"Initial inventory search for zone {zone} returned {len(res.data)} records.",
-            "response_status": res.full_response.status_code,
-            "response": res.full_response.json(),
+            "message": f"Initial inventory search for {filter_type}: {filter_value} returned {len(res.json()['data'])} records.",
+            "response_status": res.status_code,
+            "response": res.json(),
         })
-        total = res.header['totalCount']
+        total = res.json()['header']['totalCount']
         number_of_batches = math.ceil(int(total) / download_batch_size)
         write_log(log_file, {
             "timestamp": datetime.now().isoformat(),
@@ -146,16 +167,16 @@ def run_transfer_task(self, config, log_file):
 
         for i in range(number_of_batches):
             data = {
-                "LocationQuery": {"Query": f"Zone ={zone} and InventoryReservationTypeId=LOCATION"},
+                "LocationQuery": {"Query": f"{filter_type} ={filter_value} and InventoryReservationTypeId=LOCATION"},
                 "Size": download_batch_size,
                 "Page": i
             }
-            res = active_from.dci.post_inv_search(data)
+            res = requests.post(from_url + INV_SEARCH_EP, headers=from_headers, json=data)
             write_log(log_file, {
                 "timestamp": datetime.now().isoformat(),
                 "status": "RUNNING",
-                "message": f"Downloading batch {i+1}/{number_of_batches} for zone {zone}",
-                "response_status": res.full_response.status_code,
+                "message": f"Downloading batch {i+1}/{number_of_batches} for {filter_type} {filter_value}",
+                "response_status": res.status_code,
                 "response": res.json(),
             })
             db_queue.put((res.data, zone))  # Queue the data for DB write
@@ -177,23 +198,24 @@ def run_transfer_task(self, config, log_file):
             futures = []
             for i in range(item_batches):
                 item_query = items[50*i:50*(i+1)]
-                futures.append(executor.submit(download_and_import_item_batch, active_from, active_to, log_file, item_batches, item_query, i))
+                futures.append(executor.submit(download_and_import_item_batch, from_url, from_headers, to_url, to_headers, log_file, item_batches, item_query, i))
             for future in concurrent.futures.as_completed(futures):
                 pass  # Optionally handle exceptions/results
 
         # Sync items
-        res = active_to.itm.custom_search('POST', '/item-master/api/item-master/item/v2/sync', data={})
+        
+        res = requests.post(to_url + ITEM_SYNC_EP, headers=to_headers, json={})
         write_log(log_file, {
             "timestamp": datetime.now().isoformat(),
             "status": "RUNNING",
             "message": f"Item Sync Run",
-            "response_status": res.full_response.status_code,
+            "response_status": res.status_code,
             "response": res.json(),
         })
 
         # Upload inventory adjustments
         conn = sqlite3.connect(db_name)
-        df = pd.read_sql_query(f"select * from inventory_transfer_{zone}", conn)
+        df = pd.read_sql_query(f"select * from inventory_transfer_{filter_attribute}", conn)
         records = df.to_dict(orient='records')
         conn.close()
         
@@ -239,7 +261,7 @@ def run_transfer_task(self, config, log_file):
             while current_start < total_adjustments:
                 batch_end = min(current_end, total_adjustments)
                 data = out_records[current_start:batch_end]
-                futures.append(executor.submit(upload_inv_batch, active_to, log_file, data, current_start, batch_end, zone))
+                futures.append(executor.submit(upload_inv_batch, to_url, to_headers, log_file, data, current_start, batch_end, filter_value))
                 current_start += upload_batch_size
                 current_end += upload_batch_size
             # Optionally, wait for all uploads to finish
@@ -267,4 +289,19 @@ def run_transfer_task(self, config, log_file):
                     os.remove(fpath)
     os.remove(db_name)  # Clean up log file after completion
     return True
+
+# Non-Celery wrapper function for direct execution
+def run_transfer_direct(config, log_file, progress_callback=None):
+    """
+    Run data transfer without Celery - direct synchronous execution
+    
+    Args:
+        config: Configuration dictionary with all transfer settings
+        log_file: Path to log file
+        progress_callback: Optional callback function to report progress
+    
+    Returns:
+        bool: True if successful, False if failed
+    """
+    return run_transfer_sync(config, log_file, progress_callback)
 
