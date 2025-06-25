@@ -14,6 +14,7 @@ from datetime import datetime
 from scripts.inventory_transfer import write_inv, write_log
 import threading
 import queue
+from scripts.data_transfer_sync import run_transfer_sync  # Import the standalone sync function
 
 celery = Celery(
     'data_import',
@@ -56,7 +57,7 @@ def upload_inv_batch(to_url, to_headers, log_file, data, batch_start, batch_end,
 # Download and process items in batches
 def download_and_import_item_batch(from_url, from_headers, to_url, to_headers, log_file, item_batches, item_query, batch_num):
     data = {"query": f"ItemId in ({','.join(item_query)})", "size": 50}
-    res = requests.post(from_url + ITEM_EP, headers=from_headers, json=data)
+    res = requests.post(from_url + ITEM_SEARCH_EP, headers=from_headers, json=data)
     data = res.json()['data']
     res_save = requests.post(to_url + ITEM_BULK_EP, headers=to_headers, json={"data":data})
     write_log(log_file, {
@@ -288,4 +289,19 @@ def run_transfer_task(self, config, log_file):
                     os.remove(fpath)
     os.remove(db_name)  # Clean up log file after completion
     return True
+
+# Non-Celery wrapper function for direct execution
+def run_transfer_direct(config, log_file, progress_callback=None):
+    """
+    Run data transfer without Celery - direct synchronous execution
+    
+    Args:
+        config: Configuration dictionary with all transfer settings
+        log_file: Path to log file
+        progress_callback: Optional callback function to report progress
+    
+    Returns:
+        bool: True if successful, False if failed
+    """
+    return run_transfer_sync(config, log_file, progress_callback)
 
