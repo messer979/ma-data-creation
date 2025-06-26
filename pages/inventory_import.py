@@ -18,7 +18,6 @@ load_dotenv()
 
 from scripts.inventory_transfer_sync import run_transfer_sync
 testing = os.getenv('TESTING', 'False').lower()
-print(testing)
 if testing == 'true':
     from_token_test = os.getenv('from_token_test')
     from_env_test = os.getenv('from_env_test')
@@ -64,6 +63,8 @@ if 'form_skip_items' not in st.session_state:
     st.session_state.form_skip_items = False
 if 'form_skip_inventory' not in st.session_state:
     st.session_state.form_skip_inventory = False
+if 'form_inventory_type' not in st.session_state:
+    st.session_state.form_inventory_type = "Active"
 
 def get_log_file():
     uuid_val = st.session_state.get('transfer_log_uuid')
@@ -73,11 +74,9 @@ def get_log_file():
     return None
 
 LOG_FILE = "transfer_status.json"
-st.set_page_config(page_title="Active Inventory Import", layout="wide", page_icon="📥")
-st.title("📥 Active Inventory Import")
+st.set_page_config(page_title="RAD: Active Inventory Import", layout="wide", page_icon="🚀")
+st.title("📦 Active Inventory Import")
 render_sidebar()
-
-st.markdown("Import and transfer data between environments")
 
 if 'submitted' not in st.session_state:
     st.session_state.submitted = False
@@ -86,7 +85,6 @@ if 'transfer_log' not in st.session_state:
 
 # Create tabs for different import types
 
-st.header("🔄 Active Inventory Transfer")
 st.markdown("""
 Transfer active inventory between Manhattan Active WM environments.
 This tool will:
@@ -185,6 +183,13 @@ with st.form("inventory_config", enter_to_submit=False):
             key="form_attribute_value",
             placeholder=f"Enter (e.g. SC, ZONE1, A01)", 
             help=f"Specific value to filter inventory transfer"
+        )
+        inventory_type = st.selectbox(
+            "Inventory Types",
+            key="form_inventory_type",
+            options=["Active", "Lpn", "Palletized"],
+            index=0,
+            help="Select the type of inventory to transfer"
         )
         print(f"Selected attribute type: {attribute_type}, value: {attribute_value}")
 
@@ -287,7 +292,8 @@ if st.session_state.get('submitted', False):
             'download_batch_size': st.session_state.form_download_batch_size,
             'upload_batch_size': st.session_state.form_upload_batch_size,
             'skip_items': st.session_state.form_skip_items,
-            'skip_inventory': st.session_state.form_skip_inventory
+            'skip_inventory': st.session_state.form_skip_inventory,
+            'inventory_type': st.session_state.form_inventory_type
         }
                             # Create progress container
         

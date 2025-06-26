@@ -24,9 +24,14 @@ def write_inv(db_name, table_name: str, response: List[Dict]):
     conn = sqlite3.connect(db_name)
     try:
         df = pd.DataFrame(response)
-        df = df.filter(["OnHand", "LocationId", "ItemId"])
+        # df = df.filter(["OnHand", "LocationId", "ItemId"])
+        df['Extended'] = df['Extended'].apply(json.dumps)
+        df.drop(columns=['ItemExtended', 'InventoryConditionCodeList', 'IlpnConditionCodeList', 'IlpnLabels'], 
+                inplace=True, 
+                errors='ignore')
         df.to_sql(table_name, conn, index=False, if_exists='append')
     except Exception:
+        raise
         pass
     finally:
         conn.close()

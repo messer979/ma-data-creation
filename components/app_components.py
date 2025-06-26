@@ -101,7 +101,7 @@ def render_data_preview(data: List[Dict[Any, Any]], data_type: str):
                     st.markdown(f"**Record {i+1}:**")
                     st.code(json.dumps(record, indent=4), language="json", height=400)
                 else:
-                    st.json(record, expanded=1)
+                    st.json(record, expanded=2)
                   
                 if i < 2 and i < len(data) - 1:
                     st.divider()          # Download All Data button
