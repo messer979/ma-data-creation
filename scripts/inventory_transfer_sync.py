@@ -26,7 +26,9 @@ INV_SEARCH_EP = '/dcinventory/api/dcinventory/inventory/inventorysearch'
 ITEM_SEARCH_EP = '/item-master/api/item-master/item/search'
 ITEM_BULK_EP = '/item-master/api/item-master/item/bulkImport'
 ADJUST_EP = '/dcinventory/api/dcinventory/inventory/adjustAbsoluteQuantity'
+LPN_CREATE_EP = '/dcinventory/api/dcinventory/ilpn/createIlpnAndInventory'
 ITEM_SYNC_EP = '/item-master/api/item-master/item/v2/sync'
+PALLETIZE_EP = '/dcinventory/api/dcinventory/ilpn/palletizeLpns'
 
 def db_writer(db_queue, db_name, db_write_done):
     """Database writer function - runs in separate thread"""
@@ -40,10 +42,27 @@ def db_writer(db_queue, db_name, db_write_done):
         db_queue.task_done()
     db_write_done.set()
 
-def upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run, total_batches):
+def upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run, total_batches, endpoint):
     """Upload inventory batch function"""
     try:
-        res = requests.post(to_url + ADJUST_EP, headers=to_headers, json=data)
+        res = requests.post(to_url + endpoint, headers=to_headers, json=data)
+        write_log(log_file, {
+            "timestamp": datetime.now().isoformat(),
+            "status": "RUNNING",
+            "message": f"Uploaded batch {batch_run+1} of {total_batches} for {filter_value}",
+            "response_status": res.status_code,
+            "trace": res.headers['cp-trace-id'],
+            "env": res.request.url.split('/')[2],
+            "response": res.json(),
+        })
+    except (requests.exceptions.SSLError, requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError):
+        time.sleep(20)
+        # Optionally, you could retry here or log a failure
+
+def palletize_lpns(to_url, to_headers, data, batch_run, total_batches, filter_value, log_file):
+    """Palletize LPNs"""
+    try:
+        res = requests.post(to_url + PALLETIZE_EP, headers=to_headers, json=data)
         write_log(log_file, {
             "timestamp": datetime.now().isoformat(),
             "status": "RUNNING",
@@ -122,6 +141,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
         filter_value = config['filter_value']
         download_batch_size = int(config['download_batch_size'])
         upload_batch_size = int(config['upload_batch_size'])
+        inventory_type = config['inventory_type']
         
         from_env = config['from_env']
         from_org = config['from_org']
@@ -171,9 +191,12 @@ def run_transfer_sync(config, log_file, progress_callback=None):
             "response_status": None,
             "response": None,
         })
-        
+        if inventory_type == "Active":
+            inv_res_type = 'LOCATION'
+        else:
+            inv_res_type = 'LPN'
         data = {
-            "LocationQuery": {"Query": f"{filter_type} ={filter_value} and InventoryReservationTypeId=LOCATION"},
+            "LocationQuery": {"Query": f"{filter_type} ={filter_value} and InventoryReservationTypeId={inv_res_type}"},
             "Size": 1
         }
         res = requests.post(from_url + INV_SEARCH_EP, headers=from_headers, json=data)
@@ -212,8 +235,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
                 "response": None,
             })
         
-        if progress_callback:
-            progress_callback(f"Downloading {total} records in {number_of_batches} batches...")
+        progress_callback(f"Downloading {total} records in {number_of_batches} batches...")
         
         # Download in batches with async API and sync DB write
         db_queue = queue.Queue()
@@ -223,7 +245,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
 
         for i in range(number_of_batches):
             data = {
-                "LocationQuery": {"Query": f"{filter_type} ={filter_value} and InventoryReservationTypeId=LOCATION"},
+                "LocationQuery": {"Query": f"{filter_type} ={filter_value} and InventoryReservationTypeId={inv_res_type}"},
                 "Size": download_batch_size,
                 "Page": i
             }
@@ -239,8 +261,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
             })
             db_queue.put((res.json()['data'], filter_type))  # Fixed: was using res.data and zone
             
-            if progress_callback:
-                progress_callback(f"Downloaded batch {i+1}/{number_of_batches}")
+            progress_callback(f"Downloaded batch {i+1}/{number_of_batches}")
         
         db_queue.put(None)  # Sentinel value to stop the thread
         db_thread.join()
@@ -323,29 +344,64 @@ def run_transfer_sync(config, log_file, progress_callback=None):
             
             conn = sqlite3.connect(db_name)
             df = pd.read_sql_query(f"select * from inventory_transfer_{filter_type}", conn)  # Fixed: was using filter_attribute
+            df['Extended'] = df['Extended'].apply(json.loads)
             records = df.to_dict(orient='records')
+
             conn.close()
             
             # Prepare inventory adjustment records
-            add_inv_template = {
-                "SourceContainerId": "",
-                "SourceLocationId": "",
-                "SourceContainerType": "LOCATION",
-                "TransactionType": "INVENTORY_ADJUSTMENT",
-                "ItemId": "",
-                "Quantity": "",
-                "PixEventName": "INVENTORY_ADJUSTMENT",
-                "PixTransactionType": "ADJUST_UI"
-            }
-            
-            out_records = []
-            for rec in records:
-                add_inv = deepcopy(add_inv_template)
-                add_inv["SourceContainerId"] = rec["LocationId"]
-                add_inv["SourceLocationId"] = rec["LocationId"]
-                add_inv["ItemId"] = rec["ItemId"]
-                add_inv["Quantity"] = max(rec["OnHand"], 10)
-                out_records.append(add_inv)
+            if inv_res_type == 'LOCATION':
+                endpoint = ADJUST_EP
+                add_inv_template = {
+                    "SourceContainerId": "",
+                    "SourceLocationId": "",
+                    "SourceContainerType": "LOCATION",
+                    "TransactionType": "INVENTORY_ADJUSTMENT",
+                    "ItemId": "",
+                    "Quantity": "",
+                    "PixEventName": "INVENTORY_ADJUSTMENT",
+                    "PixTransactionType": "ADJUST_UI",
+                    "Extended": {}
+                }
+                out_records = []
+                for rec in records:
+                    add_inv = deepcopy(add_inv_template)
+                    add_inv["SourceContainerId"] = rec["LocationId"]
+                    add_inv["SourceLocationId"] = rec["LocationId"]
+                    add_inv["ItemId"] = rec["ItemId"]
+                    add_inv["Quantity"] = max(rec["OnHand"], 10) # Ensure minimum quantity, WM errors on 0
+                    add_inv["Extended"] = rec["Extended"]
+                    out_records.append(add_inv)
+
+            else: # lpn and pallet are the same 
+                endpoint = LPN_CREATE_EP
+                add_inv_template = {
+                    "IlpnTypeId": "ILPN",
+                    "IlpnId": "",
+                    "Status": "3000",
+                    "CurrentLocationId": "CS-102-D",
+                    "Inventory": [
+                        {
+                            "InventoryContainerTypeId": "ILPN",
+                            "InventoryContainerId": "",
+                            "ItemId": "",
+                            "OnHand": 50,
+                            "Extended": {}
+                        }
+                    ]
+                }
+                out_records = []
+                for rec in records:
+                    add_inv = deepcopy(add_inv_template)
+                    add_inv["IlpnId"] = rec["IlpnId"]
+                    add_inv["Inventory"][0]["InventoryContainerId"] = rec["IlpnId"]
+                    add_inv["CurrentLocationId"] = rec["LocationId"]
+                    add_inv["Inventory"][0]["ItemId"] = rec["ItemId"]
+                    add_inv["Inventory"][0]["OnHand"] = int(rec["OnHand"])
+                    add_inv["Inventory"][0]["Extended"] = rec["Extended"]
+                    out_records.append(add_inv)
+
+                
             
             total_adjustments = len(out_records)
             adjustment_batches = math.ceil(total_adjustments / upload_batch_size)
@@ -365,13 +421,96 @@ def run_transfer_sync(config, log_file, progress_callback=None):
             for i in range(adjustment_batches):
                 current_start = i * upload_batch_size
                 batch_end = min((i + 1) * upload_batch_size, total_adjustments)
-                # batch_end = min(current_start + upload_batch_size, total_adjustments)
                 data = out_records[current_start:batch_end]
-                upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run=i, total_batches = adjustment_batches)
-                # current_start += upload_batch_size
+                upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run=i, total_batches=adjustment_batches, endpoint=endpoint)
                 progress_callback(f"Imported inventory batch {i+1} of {adjustment_batches}")
 
-        
+            if inventory_type == "Palletized":
+                # Palletize LPNs if inventory type is Palletized
+                if progress_callback:
+                    progress_callback("Palletizing LPNs...")
+                
+                # Query database to group LPNs by ParentLpnId and LocationId
+                conn = sqlite3.connect(db_name)
+                query = f"""
+                SELECT ParentLpnId, LocationId, IlpnId, ItemId, OnHand, Extended
+                FROM inventory_transfer_{filter_type} 
+                WHERE ParentLpnId IS NOT NULL 
+                GROUP BY ParentLpnId, LocationId, IlpnId
+                ORDER BY ParentLpnId, LocationId
+                """
+                lpn_df = pd.read_sql_query(query, conn)
+                conn.close()
+                
+                if lpn_df.empty:
+                    write_log(log_file, {
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "RUNNING",
+                        "message": "No LPNs with ParentLpnId found for palletization.",
+                        "response_status": None,
+                        "response": None,
+                    })
+                else:
+                    # Group by ParentLpnId and LocationId
+                    pallet_groups = lpn_df.groupby(['ParentLpnId', 'LocationId'])
+                    
+                    palletize_records = []
+                    for (parent_lpn_id, location_id), group in pallet_groups:
+                        # Create pallet record with child LPNs
+                        child_lpns = []
+                        for _, row in group.iterrows():
+                            extended_data = json.loads(row['Extended']) if row['Extended'] else {}
+                            child_lpn = {
+                                "IlpnId": row['IlpnId'],
+                                "IlpnTypeId": "ILPN",
+                                "Status": 3000,
+                                "CurrentLocationId": location_id,
+                                "PhysicalEntityCodeId": "ILPN",
+                                "CurrentLocationTypeId": "STORAGE",
+                                "Inventory": [
+                                    {
+                                        "InventoryContainerId": row['IlpnId'],
+                                        "IlpnId": row['IlpnId'],
+                                        "InventoryContainerTypeId": "ILPN",
+                                        "OnHand": int(row['OnHand']),
+                                        "LocationId": location_id,
+                                        "ItemId": row['ItemId'],
+                                        "Extended": extended_data
+                                    }
+                                ]
+                            }
+                            child_lpns.append(child_lpn)
+                        
+                        # Create pallet record
+                        pallet_record = {
+                            "IlpnId": parent_lpn_id,
+                            "IlpnTypeId": "PALLET",
+                            "CurrentLocationId": location_id,
+                            "InheritIlpnLocation": True,
+                            "Status": 3000,
+                            "CalculateLpnSizeType": True,
+                            "ChildLpns": child_lpns
+                        }
+                        palletize_records.append(pallet_record)
+                    
+                    total_pallets = len(palletize_records)
+                    palletize_batches = math.ceil(total_pallets / upload_batch_size)
+                    
+                    write_log(log_file, {
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "RUNNING",
+                        "message": f"Creating {total_pallets} pallets in {palletize_batches} batches.",
+                        "response_status": None,
+                        "response": None,
+                    })
+                    
+                    for i in range(palletize_batches):
+                        current_start = i * upload_batch_size
+                        batch_end = min((i + 1) * upload_batch_size, total_pallets)
+                        batch_data = palletize_records[current_start:batch_end]
+                        palletize_lpns(to_url, to_headers, batch_data, batch_run=i, total_batches=palletize_batches, filter_value=filter_value, log_file=log_file)
+                        if progress_callback:
+                            progress_callback(f"Palletized batch {i+1} of {palletize_batches}")
         # Commented out concurrent processing to avoid errors:
         # with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         #     futures = []

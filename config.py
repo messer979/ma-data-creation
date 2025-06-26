@@ -13,7 +13,7 @@ DEFAULT_API_HEADERS = {
 
 # App Configuration
 PAGE_CONFIG = {
-    'page_title': "Rapid Active Data",
+    'page_title': "RAD: Rapid Active Data",
     'page_icon': "🚀",
     'layout': "wide",
     'initial_sidebar_state': "expanded"
