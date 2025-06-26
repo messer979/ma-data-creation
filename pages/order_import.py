@@ -19,7 +19,6 @@ load_dotenv()
 from scripts.order_transfer_sync import run_transfer_sync
 
 testing = os.getenv('TESTING', 'False').lower()
-print(testing)
 if testing == 'true':
     from_token_test = os.getenv('from_token_test')
     from_env_test = os.getenv('from_env_test')
@@ -75,11 +74,9 @@ def get_log_file():
         return f"transfer_status_{uuid_val}.json"
     return None
 
-st.set_page_config(page_title="Order Import", layout="wide", page_icon="🧾")
-st.title("📥 Data Import")
+st.set_page_config(page_title="RAD: Order Import", layout="wide", page_icon="🚀")
+st.title("🧾 Order Import")
 render_sidebar()
-
-st.markdown("Import and transfer data between environments")
 
 if 'submitted' not in st.session_state:
     st.session_state.submitted = False
@@ -88,13 +85,13 @@ if 'transfer_log' not in st.session_state:
 
 # Create tabs for different import types
 
-st.header("🔄 Active Inventory Transfer")
 st.markdown("""
-Transfer active inventory between Manhattan Active WM environments.
+Transfer original orders between Manhattan Active WM environments.
 This tool will:
-1. Download inventory data from source environment
-2. Transfer and sync items to target environment (unless "Inventory only" is selected)
-3. Upload inventory adjustments to target environment (unless "Items only" is selected)
+1. Download order data from source environment
+2. Transfer and sync items to target environment (unless "Skip items" is selected)
+3. Transfer and sync facilities to target environment (unless "Skip Facilities" is selected)
+4. Transfer and sync original orders to target environment (unless "Skip Orders" is selected)
 """)
 
 # Add validation warning for conflicting options
@@ -210,17 +207,17 @@ with st.form("inventory_config", enter_to_submit=False):
             value=st.session_state.form_skip_items,
             help="Skip item import"
         )
-        skip_orders = st.checkbox(
-            "Skip Orders", 
-            key="form_skip_orders",
-            value=st.session_state.form_skip_orders,
-            help="Skip order import"
-        )        
         skip_facilities = st.checkbox(
             "Skip Facilities", 
             key="form_skip_facilities",
             value=st.session_state.form_skip_facilities,
             help="Skip facility import"
+        )        
+        skip_orders = st.checkbox(
+            "Skip Orders", 
+            key="form_skip_orders",
+            value=st.session_state.form_skip_orders,
+            help="Skip order import"
         )        
 
 

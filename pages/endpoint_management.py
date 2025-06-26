@@ -14,8 +14,8 @@ from components.debug import render_debug_section
 
 # Page configuration
 st.set_page_config(
-    page_title="Endpoint Management",
-    page_icon="🔧",
+    page_title="RAD: Endpoint Management",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )

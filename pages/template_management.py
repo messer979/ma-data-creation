@@ -28,7 +28,11 @@ template_manager = get_session_template_manager()
 template_generator = TemplateGenerator()
 
 # Main UI
-st.set_page_config(page_title="Template Management", page_icon="🗂️")
+st.set_page_config(
+    page_title="RAD: Template Management", 
+    page_icon="🚀", 
+    layout="wide"
+)
 st.title("🗂️ Template Management")
 
 # Sidebar navigation
