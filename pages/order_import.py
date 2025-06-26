@@ -1,6 +1,6 @@
 """
-Data Import Page
-Provides UI for importing data including active inventory transfer functionality
+Order Import Page
+Provides UI for importing order data including active inventory transfer functionality
 """
 
 import streamlit as st
@@ -16,7 +16,8 @@ load_dotenv()
 
 # Production imports (commented out for testing)
 
-from scripts.inventory_transfer_sync import run_transfer_sync
+from scripts.order_transfer_sync import run_transfer_sync
+
 testing = os.getenv('TESTING', 'False').lower()
 print(testing)
 if testing == 'true':
@@ -53,7 +54,7 @@ if 'form_to_facility' not in st.session_state:
 if 'form_to_token' not in st.session_state:
     st.session_state.form_to_token = to_token_test if testing else ""
 if 'form_attribute_type' not in st.session_state:
-    st.session_state.form_attribute_type = "Zone"
+    st.session_state.form_attribute_type = "MinimumStatus"  # Default to MinimumStatus
 if 'form_attribute_value' not in st.session_state:
     st.session_state.form_attribute_value = ""
 if 'form_download_batch_size' not in st.session_state:
@@ -62,8 +63,10 @@ if 'form_upload_batch_size' not in st.session_state:
     st.session_state.form_upload_batch_size = 50
 if 'form_skip_items' not in st.session_state:
     st.session_state.form_skip_items = False
-if 'form_skip_inventory' not in st.session_state:
-    st.session_state.form_skip_inventory = False
+if 'form_skip_orders' not in st.session_state:
+    st.session_state.form_skip_orders = False
+if 'form_skip_facilities' not in st.session_state:
+    st.session_state.form_skip_facilities = False
 
 def get_log_file():
     uuid_val = st.session_state.get('transfer_log_uuid')
@@ -72,9 +75,8 @@ def get_log_file():
         return f"transfer_status_{uuid_val}.json"
     return None
 
-LOG_FILE = "transfer_status.json"
-st.set_page_config(page_title="Active Inventory Import", layout="wide", page_icon="📥")
-st.title("📥 Active Inventory Import")
+st.set_page_config(page_title="Order Import", layout="wide", page_icon="🧾")
+st.title("📥 Data Import")
 render_sidebar()
 
 st.markdown("Import and transfer data between environments")
@@ -91,13 +93,13 @@ st.markdown("""
 Transfer active inventory between Manhattan Active WM environments.
 This tool will:
 1. Download inventory data from source environment
-2. Transfer and sync items to target environment (unless "Skip Items" is selected)
-3. Upload inventory adjustments to target environment (unless "Skip ItInventoryems" is selected)
+2. Transfer and sync items to target environment (unless "Inventory only" is selected)
+3. Upload inventory adjustments to target environment (unless "Items only" is selected)
 """)
 
 # Add validation warning for conflicting options
-if st.session_state.get('form_skip_items', False) and st.session_state.get('form_skip_inventory', False):
-    st.warning("⚠️ Both 'Skip Items' and 'Skip Inventory' cannot be selected at the same time. Please choose one or neither.")
+if st.session_state.get('form_skip_items', False) and st.session_state.get('form_skip_orders', False) and st.session_state.get('form_skip_facilities', False):
+    st.warning("⚠️ Both 'Items only' and 'Inventory only' cannot be selected at the same time. Please choose one or neither.")
 
 # Initialize session state for logging (must be outside form)
 if 'transfer_running' not in st.session_state:
@@ -113,7 +115,7 @@ with st.form("inventory_config", enter_to_submit=False):
     # Test mode toggle
     # test_mode = st.checkbox("🧪 Test Mode (Use Dummy Server)", value=False, 
     #                        help="Use dummy server for testing UI without real API calls")
-
+            
     col1, col2 = st.columns(2)
     token = ''
     with col1:
@@ -167,7 +169,7 @@ with st.form("inventory_config", enter_to_submit=False):
     
     with col3:
         # Find the current index for the selectbox
-        options = ["Zone", "Area", "Aisle", "PickExecutionZoneId", "PickAllocationZoneId"]
+        options = ["MinimumStatus", "OrderType"]
         try:
             current_index = options.index(st.session_state.form_attribute_type)
         except ValueError:
@@ -183,8 +185,9 @@ with st.form("inventory_config", enter_to_submit=False):
         attribute_value = st.text_input(
             f"Value", 
             key="form_attribute_value",
-            placeholder=f"Enter (e.g. SC, ZONE1, A01)", 
-            help=f"Specific value to filter inventory transfer"
+            placeholder=f"Enter {attribute_type} (e.g. SC, ZONE1, A01)", 
+            value=st.session_state.form_attribute_value,
+            help=f"Specific {attribute_type} value to filter inventory transfer"
         )
         print(f"Selected attribute type: {attribute_type}, value: {attribute_value}")
 
@@ -207,11 +210,17 @@ with st.form("inventory_config", enter_to_submit=False):
             value=st.session_state.form_skip_items,
             help="Skip item import"
         )
-        skip_inventory = st.checkbox(
-            "Skip Inventory", 
-            key="form_skip_inventory",
-            value=st.session_state.form_skip_inventory,
-            help="Skip inventory import"
+        skip_orders = st.checkbox(
+            "Skip Orders", 
+            key="form_skip_orders",
+            value=st.session_state.form_skip_orders,
+            help="Skip order import"
+        )        
+        skip_facilities = st.checkbox(
+            "Skip Facilities", 
+            key="form_skip_facilities",
+            value=st.session_state.form_skip_facilities,
+            help="Skip facility import"
         )        
 
 
@@ -226,9 +235,9 @@ with st.form("inventory_config", enter_to_submit=False):
             st.error("❌ Cannot use a production environment (subdomain ending in 'p') for source or target!")
     
     # Check for conflicting options
-    conflicting_options = skip_items and skip_inventory
+    conflicting_options = skip_items and skip_orders and skip_facilities
     if conflicting_options:
-        st.error("❌ Cannot select both 'Skip Items' and 'Skip Inventory' options!")
+        st.error("❌ Cannot skip all imports!")
         
     can_submit = not prod_env and not conflicting_options and (all([
         from_env, from_org, from_facility, from_token,
@@ -287,9 +296,9 @@ if st.session_state.get('submitted', False):
             'download_batch_size': st.session_state.form_download_batch_size,
             'upload_batch_size': st.session_state.form_upload_batch_size,
             'skip_items': st.session_state.form_skip_items,
-            'skip_inventory': st.session_state.form_skip_inventory
+            'skip_orders': st.session_state.form_skip_orders,
+            'skip_facilities': st.session_state.form_skip_facilities,
         }
-                            # Create progress container
         
         
         progress_container = st.container()

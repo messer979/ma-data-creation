@@ -14,7 +14,7 @@ from datetime import datetime
 from scripts.inventory_transfer import write_inv, write_log
 import threading
 import queue
-from scripts.data_transfer_sync import run_transfer_sync  # Import the standalone sync function
+from scripts.inventory_transfer_sync import run_transfer_sync  # Import the standalone sync function
 
 celery = Celery(
     'data_import',
