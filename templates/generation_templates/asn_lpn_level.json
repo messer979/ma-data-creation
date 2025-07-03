@@ -14,7 +14,7 @@
         "Lpn.LpnDetail.QuantityUomId": "Unit",
         "Lpn.LpnDetail.LpnDetailStatus": "1000"
     },
-    "DynamicFields": {
+    "SequenceFields": {
         "AsnId": "CM_ASN_LPN",
         "Lpn.LpnId": "CM_LPN"
     },

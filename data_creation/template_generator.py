@@ -81,15 +81,15 @@ class TemplateGenerator:
         generation_template = self.generation_templates[template_name]
         records = []
         
-        # Track dynamic field counters across all records
-        dynamic_counters = {}
+        # Track sequence field counters across all records
+        sequence_counters = {}
         
         for i in range(count):
             record = create_record_from_template(
                 base_template,
                 generation_template,
                 i,
-                dynamic_counters
+                sequence_counters
             )
             records.append(record)
         

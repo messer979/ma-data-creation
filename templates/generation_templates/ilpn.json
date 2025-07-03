@@ -4,7 +4,7 @@
         "Status": "3000",
         "Inventory.InventoryContainerTypeId": "ILPN"
     },
-    "DynamicFields": {
+    "SequenceFields": {
         "IlpnId": "CM_ILPN"
     },
     "ArrayLengths": {
