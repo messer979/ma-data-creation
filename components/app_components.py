@@ -193,7 +193,6 @@ def render_template_editor(data_gen, selected_template: str) -> Dict[str, Any]:
     # Get current generation template content
     template_generator = data_gen.get_template_generator()
     current_template = template_generator.get_template_info(selected_template)
-    print(f"selected_template {selected_template}")
     
     if current_template:
         template_json = json.dumps(current_template, indent=2)
