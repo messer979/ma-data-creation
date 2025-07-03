@@ -17,7 +17,7 @@
   "ArrayLengths": {
     "OriginalOrderLine": 1
   },
-  "DynamicFields": {
+  "SequenceFields": {
     "OriginalOrderId": "CM_ORDER"
   },
   "RandomFields": [

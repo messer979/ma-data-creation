@@ -2,7 +2,7 @@
     "StaticFields": {
         "Style": "Shirt"
     },
-    "DynamicFields": {
+    "SequenceFields": {
         "ItemId": "CM_ITEM"
     },
     "ArrayLengths": {},

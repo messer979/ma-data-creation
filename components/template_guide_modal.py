@@ -82,7 +82,7 @@ def guide_modal():
         ```json
         {
             "StaticFields": {"Active": true},
-            "DynamicFields": {"ItemId": "GEN_ITEM"},
+            "SequenceFields": {"ItemId": "GEN_ITEM"},
             "RandomFields": [
                 {"FieldName": "Price", "FieldType": "float(5.0,99.99,2)"}
             ],
@@ -156,9 +156,9 @@ def guide_modal():
             "IsEnabled": true
         }
         ```
-          **🔢 DynamicFields:** Auto-incrementing values
+          **🔢 SequenceFields:** Auto-incrementing values
         ```json
-        "DynamicFields": {
+        "SequenceFields": {
             "ItemId": "CM_ITEM",
             "OrderId": "ORDER_{{dttm}}"
         }

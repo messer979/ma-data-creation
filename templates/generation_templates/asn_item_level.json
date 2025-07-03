@@ -11,7 +11,7 @@
     "AsnLine.PurchaseOrderId": "",
     "AsnLine.PurchaseOrderLineId": ""
   },
-  "DynamicFields": {
+  "SequenceFields": {
     "AsnId": "ASN_ITEM_{{dttm}}",
     "AsnLine.AsnLineId": "ASN_LINE_{{dttm}}",
     "ShipmentAsnAssociation.ShipmentId": "SHIPMENT_{{dttm}}"

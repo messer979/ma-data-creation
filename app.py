@@ -19,15 +19,35 @@ from components.app_components import (
     render_count_input,
     render_api_options,
     render_results_panel,
-    render_template_editor,
-    render_bulk_template_manager_ui
+    render_template_editor
 )
 from components.sidebar import render_sidebar
 from data_creation.data_operations import handle_generate_button_click
 import json
 from dotenv import load_dotenv
 
-load_dotenv()
+
+def _sync_generator_to_session_templates(template_generator):
+    """
+    Sync templates from the template generator to session state
+    This ensures loaded templates are available in the editor
+    
+    Args:
+        template_generator: TemplateGenerator instance with templates to sync
+    """
+    for template_name, template_content in template_generator.generation_templates.items():
+        # Create session state key for this template
+        content_key = f"template_content_{template_name}"
+        
+        # Convert template content to JSON string and store in session state
+        try:
+            template_json = json.dumps(template_content, indent=2)
+            st.session_state[content_key] = template_json
+        except Exception as e:
+            print(f"Warning: Could not sync template {template_name} to session state: {e}")
+            continue
+
+
 # Page configuration
 st.set_page_config(**PAGE_CONFIG)
 
@@ -35,6 +55,8 @@ dev_config_file = 'user_config.json'
 # Initialize session state
 if 'data_gen' not in st.session_state:
     st.session_state.data_gen = DataGenerator()
+    # Sync any loaded generation templates to session state for the editor
+    _sync_generator_to_session_templates(st.session_state.data_gen.get_template_generator())
 
 # Load config into session state at startup
 load_initial_config_to_session()
@@ -55,11 +77,6 @@ def main():
         st.session_state.ace_theme = "github"    # Render sidebar configuration
     render_sidebar()
     
-    # Check if we should show the template manager page instead of main content
-    if st.session_state.get('show_template_manager_page', False):
-        # Render the bulk template manager UI which will handle the template manager page
-        render_bulk_template_manager_ui(st.session_state.data_gen)
-        return  # Exit early to avoid rendering main content
       # Main content area (single column layout)
     # Template selection
     template_options = sorted(list(st.session_state.data_gen.get_template_generator().get_available_templates()))
@@ -83,23 +100,42 @@ def main():
     send_to_api, batch_size = render_api_options()
     
     # Generate button with separated logic
-    if st.button("🚀 Generate Data", type="primary"):
-        # Check if template editor has valid results
-        if not template_editor_result.get('is_valid', True):
-            st.error("❌ Please fix the JSON template before generating data.")
-            return
-        
-        success = handle_generate_button_click(
-            selected_template=selected_template,
-            count=count,
-            template_params={},  # Empty dict since we removed template options
-            send_to_api=send_to_api,
-            batch_size=batch_size,
-            template_editor_result=template_editor_result
-        )
-        
-        if success:
-            st.rerun()  # Refresh to show results      # Results panel at the bottom
+    col1, col2, col3 = st.columns([2, 2, 6])
+    
+    with col1:
+        if st.button("🚀 Generate Data", type="primary"):
+            # Check if template editor has valid results
+            if not template_editor_result.get('is_valid', True):
+                st.error("❌ Please fix the JSON template before generating data.")
+                return
+            
+            success = handle_generate_button_click(
+                selected_template=selected_template,
+                count=count,
+                template_params={},  # Empty dict since we removed template options
+                send_to_api=send_to_api,
+                batch_size=batch_size,
+                template_editor_result=template_editor_result
+            )
+            
+            if success:
+                st.rerun()  # Refresh to show results
+    
+    with col2:
+        if st.button("🗑️ Clear Results", help="Clear all generated data and API results"):
+            # Clear results from session state
+            if 'generated_data' in st.session_state:
+                del st.session_state['generated_data']
+            if 'api_results' in st.session_state:
+                del st.session_state['api_results']
+            if 'data_type' in st.session_state:
+                del st.session_state['data_type']
+            st.success("✅ Results cleared!")
+            st.rerun()
+    
+    # Empty column for spacing
+    with col3:
+        pass      # Results panel at the bottom
     st.markdown("---")
     render_results_panel()
     

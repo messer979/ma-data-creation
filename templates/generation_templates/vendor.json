@@ -4,8 +4,8 @@
     "Active": true,
     "CorporateVendor": false
   },
-  "ArrayLengths": {},
-  "DynamicFields": {
+  "ArrayLengths": {  },
+  "SequenceFields": {
     "VendorId": "CM_VENDOR"
   },
   "RandomFields": [
