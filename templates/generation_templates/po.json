@@ -8,7 +8,7 @@
         "PurchaseOrderLine.Closed": false,
         "PurchaseOrderLine.Canceled": false
     },
-    "DynamicFields": {
+    "SequenceFields": {
         "PurchaseOrderId": "CM_PO"
     },
     "ArrayLengths": {

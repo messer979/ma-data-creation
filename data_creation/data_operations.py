@@ -2,6 +2,7 @@
 Data generation operations and business logic
 """
 
+import json
 import streamlit as st
 from typing import List, Dict, Any
 from data_creation.api_operations import send_data_to_api
@@ -28,30 +29,26 @@ def handle_generate_button_click(selected_template: str,
     """
     with st.spinner("Generating data..."):
         try:
-            # Store original template for restoration later
-            original_template = None
             template_generator = st.session_state.data_gen.get_template_generator()
             
-            # If template has been edited, use it temporarily for generation without saving
+            # If template has been edited, use it for generation and save it if successful
+            template_to_save = None
             if (template_editor_result and 
                 template_editor_result.get('is_valid', False) and
                 template_editor_result.get('template_changed', False)):
                 
-                # Store original template
-                original_template = template_generator.generation_templates.get(selected_template)
-                
-                # Temporarily update the in-memory template for generation
-                template_generator.generation_templates[selected_template] = template_editor_result['template']
-                
+                # Update the in-memory template for generation
+                editor_template = template_editor_result['template']
+                template_generator.generation_templates[selected_template] = editor_template
+                template_to_save = editor_template
             
             # Always use generation template system for data creation
             generated_data = st.session_state.data_gen.generate_data(
                 selected_template, count, **template_params
             )
             
-            # Restore original template if it was temporarily modified
-            if original_template is not None:
-                template_generator.generation_templates[selected_template] = original_template
+            # If generation was successful and we have a template to save, it's already saved above
+            # No need to restore - keep the changes permanently
                 
         except ValueError as e:
             st.error(f"❌ Error generating data: {str(e)}")
@@ -62,7 +59,12 @@ def handle_generate_button_click(selected_template: str,
             # Store in session state
             st.session_state.generated_data = generated_data
             st.session_state.data_type = selected_template
-            st.success(f"✅ Generated {len(generated_data)} records!")
+            
+            # Show success message including template save confirmation if applicable
+            success_msg = f"✅ Generated {len(generated_data)} records!"
+            if template_to_save is not None:
+                success_msg += " Template changes have been saved to session."
+            st.success(success_msg)
               # Send to API if requested
             if send_to_api:
                 # Get template-specific endpoint, headers, and configuration from session_state

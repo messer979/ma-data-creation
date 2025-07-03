@@ -172,194 +172,9 @@ def render_results_panel():
         render_data_preview(data, data_type)
 
 
-def render_bulk_template_manager_ui(data_gen):
-    """
-    Render the bulk template manager interface based on session state
-    
-    Args:
-        data_gen: DataGenerator instance
-    """
-    # Get the template generator
-    template_generator = data_gen.get_template_generator()
-    
-    # Check if we should show the template manager page
-    if st.session_state.get('show_template_manager_page', False):
-        render_template_manager_page(template_generator)
-    
-    # Legacy support for existing bulk manager states
-    elif st.session_state.get('show_bulk_manager', False):
-        st.markdown("---")
-        BulkTemplateManager.render_bulk_template_manager(template_generator)
-        
-        # Add close button
-        if st.button("❌ Close Bulk Manager", help="Close bulk template manager"):
-            st.session_state.show_bulk_manager = False
-            st.rerun()
-    
-    elif st.session_state.get('show_bulk_export', False):
-        st.markdown("---")
-        render_bulk_export_ui(template_generator)
-        
-    elif st.session_state.get('show_bulk_import', False):
-        st.markdown("---")
-        render_bulk_import_ui(template_generator)
 
 
-def render_template_manager_page(template_generator):
-    """
-    Render the dedicated template management page
-    
-    Args:
-        template_generator: TemplateGenerator instance
-    """
-    # Clear the main content area and show template manager
-    st.markdown("---")
-    
-    # Header with back button
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        if st.button("← Back to Main", help="Return to main data generation page"):
-            st.session_state.show_template_manager_page = False
-            st.rerun()
-    
-    with col2:
-        st.title("🛠️ Template Manager")
-    
-    st.markdown("\n")
-    
-    # Render the full bulk template manager interface
-    BulkTemplateManager.render_bulk_template_manager(template_generator)
 
-
-def render_bulk_export_ui(template_generator):
-    """
-    Render the bulk export UI
-    
-    Args:
-        template_generator: TemplateGenerator instance
-    """
-    st.subheader("📤 Export All Templates")
-    
-    if template_generator.generation_templates:
-        st.write(f"Export all {len(template_generator.generation_templates)} generation templates as a single JSON file.")
-        
-        # Show template list
-        with st.expander("📋 Templates to Export", expanded=False):
-            for template_name in sorted(template_generator.generation_templates.keys()):
-                st.write(f"• {template_name}")
-          # Export and download button
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            # Generate export data
-            json_str, export_data = BulkTemplateManager.export_all_templates(template_generator)
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"generation_templates_export_{timestamp}.json"
-            
-            # Single button that instantly downloads
-            st.download_button(
-                label="📥 Export & Download Templates",
-                data=json_str,
-                file_name=filename,
-                mime="application/json",
-                use_container_width=True,
-                help=f"Export and download all {len(template_generator.generation_templates)} templates instantly"
-            )
-            
-            # Show export summary
-            st.info(f"📋 Ready to export: {export_data['metadata']['template_count']} templates")
-        
-        with col2:
-            if st.button("❌ Close", help="Close export interface"):
-                st.session_state.show_bulk_export = False
-                st.rerun()
-    else:
-        st.warning("No templates found to export.")
-        if st.button("❌ Close", help="Close export interface"):
-            st.session_state.show_bulk_export = False
-            st.rerun()
-
-
-def render_bulk_import_ui(template_generator):
-    """
-    Render the bulk import UI
-    
-    Args:
-        template_generator: TemplateGenerator instance
-    """
-    st.subheader("📥 Import Templates")
-    
-    # File uploader
-    uploaded_file = st.file_uploader(
-        "Import generation templates from a JSON file.", 
-        type=['json'],
-        help="Upload a JSON file containing generation templates",
-        key="bulk_import_file"
-    )
-        
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        if uploaded_file is not None:
-            try:
-                # Read the uploaded file
-                content = uploaded_file.read().decode('utf-8')
-                
-                # Preview the import
-                try:
-                    parsed_preview = json.loads(content)
-                    if "templates" in parsed_preview and isinstance(parsed_preview["templates"], list):
-                        st.info(f"📋 Ready to import {len(parsed_preview['templates'])} templates")
-                        
-                        # Show template names
-                        with st.expander("🔍 Preview Templates", expanded=True):
-                            for template in parsed_preview["templates"]:
-                                if isinstance(template, dict) and "name" in template:
-                                    exists = template["name"] in template_generator.generation_templates
-                                    status = "⚠️ Will overwrite" if exists else "⚠️ Will skip" if exists else "✅ New"
-                                    st.write(f"• {template['name']} {status}")
-                    else:
-                        st.error("Invalid template format")
-                        uploaded_file = None
-                except json.JSONDecodeError:
-                    st.error("Invalid JSON format")
-                    uploaded_file = None
-                
-                # Import button
-                if uploaded_file is not None:
-                    if st.button("🔼 Import Templates", use_container_width=True):
-                        success, message, imported, skipped = BulkTemplateManager.import_all_templates(
-                            template_generator, content
-                        )
-                        
-                        if success:
-                            st.success(f"✅ {message}")
-                            
-                            if imported:
-                                with st.expander("✅ Imported Templates", expanded=True):
-                                    for template_name in imported:
-                                        st.write(f"• {template_name}")
-                            
-                            if skipped:
-                                with st.expander("⚠️ Skipped Templates", expanded=False):
-                                    for template_name in skipped:
-                                        st.write(f"• {template_name}")
-                            
-                            # Refresh the page to show new templates
-                            if imported:
-                                st.balloons()
-                                st.rerun()
-                        else:
-                            st.error(f"❌ {message}")
-                            
-            except Exception as e:
-                st.error(f"Error reading file: {str(e)}")
-    
-    with col2:
-        if st.button("❌ Close", help="Close import interface"):
-            st.session_state.show_bulk_import = False
-            st.rerun()
-    
 
 
 def render_template_editor(data_gen, selected_template: str) -> Dict[str, Any]:
@@ -378,6 +193,7 @@ def render_template_editor(data_gen, selected_template: str) -> Dict[str, Any]:
     # Get current generation template content
     template_generator = data_gen.get_template_generator()
     current_template = template_generator.get_template_info(selected_template)
+    print(f"selected_template {selected_template}")
     
     if current_template:
         template_json = json.dumps(current_template, indent=2)
@@ -385,32 +201,51 @@ def render_template_editor(data_gen, selected_template: str) -> Dict[str, Any]:
         # Create a default generation template structure if none exists
         default_template = {
             "StaticFields": {},
-            "DynamicFields": {},
+            "SequenceFields": {},
             "RandomFields": [],
             "LinkedFields": {}
         }
         template_json = json.dumps(default_template, indent=2)
         current_template = default_template
     
+    # Use separate session state keys for storing template content (not widget keys)
+    content_key = f"template_content_{selected_template}"
+    editor_key = f"generation_template_editor_{selected_template}"
+        
+    # Initialize the content storage if it doesn't exist
+    if content_key not in st.session_state:
+        st.session_state[content_key] = template_json
+    
+    # Get the current value for the editor (use stored content)
+    editor_value = st.session_state.get(content_key, template_json)
+    
     # JSON editor
     with st.expander("Edit Generation Template", expanded=True):
         edited_template = st_ace(
-            value=template_json,
+            value=editor_value,
             language="json",
             keybinding="sublime",
             height=500,
-            key=f"generation_template_editor_{selected_template}",
+            key=editor_key,
             theme=st.session_state.ace_theme,
         )
+        
+        # Update the stored content when the editor changes
+        if edited_template != editor_value:
+            st.session_state[content_key] = edited_template
         
         # Validate JSON and generation template structure
         template_valid = True
         parsed_template = {}
+        
+        # Use the most current content from the editor
+        current_editor_content = st.session_state.get(content_key, template_json)
+        
         try:
-            parsed_template = json.loads(edited_template)
+            parsed_template = json.loads(current_editor_content)
             
             # Validate generation template structure
-            required_sections = ["StaticFields", "DynamicFields", "RandomFields", "LinkedFields"]
+            required_sections = ["StaticFields", "SequenceFields", "RandomFields", "LinkedFields"]
             validation_errors = []
             
             for section in required_sections:
@@ -465,75 +300,3 @@ def _extract_field_paths(obj, prefix=""):
     return paths
 
 
-def _get_nested_value(obj, path):
-    """Get value from nested object using dot notation path"""
-    parts = path.split('.')
-    current = obj
-    
-    for part in parts:
-        if isinstance(current, dict) and part in current:
-            current = current[part]
-        elif isinstance(current, list) and part.isdigit() and int(part) < len(current):
-            current = current[int(part)]
-        else:
-            return None
-    
-    return current
-
-
-def _save_template_changes(data_gen, template_name, new_template):
-    """Save template changes to the DataGenerator"""
-    try:
-        data_gen.templates[template_name] = new_template
-        return True
-    except Exception as e:
-        st.error(f"Error saving template: {e}")
-        return False
-
-
-def _reset_template(data_gen, template_name):
-    """Reset template to original from file"""
-    try:
-        data_gen._load_templates()  # Reload from files
-        return True
-    except Exception as e:
-        st.error(f"Error resetting template: {e}")
-        return False
-
-
-def _save_generation_template_changes(data_gen, template_name, new_template):
-    """Save generation template changes to file"""
-    import os
-    try:
-        # Get the template generator and save to the generation_templates directory
-        template_generator = data_gen.get_template_generator()
-        generation_templates_dir = template_generator.templates_dir
-        
-        # Ensure directory exists
-        if not os.path.exists(generation_templates_dir):
-            os.makedirs(generation_templates_dir)
-        
-        # Save to file
-        file_path = os.path.join(generation_templates_dir, f"{template_name}.json")
-        with open(file_path, 'w') as f:
-            json.dump(new_template, f, indent=2)
-        
-        # Reload the generation templates to reflect changes
-        template_generator.load_generation_templates()
-        
-        return True
-    except Exception as e:
-        st.error(f"Error saving generation template: {e}")
-        return False
-
-
-def _reset_generation_template(data_gen, template_name):
-    """Reset generation template to original from file"""
-    try:
-        # Reload generation templates from files
-        template_generator = data_gen.get_template_generator()
-        template_generator.load_generation_templates()
-        return True
-    except Exception as e:
-        st.error(f"Error resetting generation template: {e}")
-        return False

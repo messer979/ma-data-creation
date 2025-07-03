@@ -6,8 +6,8 @@
     "FacilityAddress.FirstName": "Store Manager",
     "FacilityAddress.Country": "US"
   },
-  "ArrayLengths": {},
-  "DynamicFields": {
+  "ArrayLengths": {  },
+  "SequenceFields": {
     "FacilityId": "CM_STORE"
   },
   "RandomFields": [    {

@@ -71,16 +71,10 @@ def display_api_results(api_results: List[Dict]):
     for result in api_results:
         batch_info = result['result']
         if batch_info['success']:
+            api_success = batch_info['response']['success']
+            status_code = batch_info['status_code']
             # Create expandable section for successful batches
-            with st.expander(f"✅ Batch {result['batch']}: {result['size']} records sent successfully", expanded=False):
-                # Show response time if available
-                if 'response_time' in batch_info:
-                    st.caption(f"Response time: {batch_info['response_time']:.2f}s")
-                
-                # Show status code if available
-                if 'status_code' in batch_info:
-                    st.caption(f"Status code: {batch_info['status_code']}")
-                
+            with st.expander(f"✅ Batch {result['batch']}: {result['size']} record(s) sent successfully. Status: <{status_code}> Success?: {api_success}", expanded=False):               
                 # Show trace ID if available in response headers
                 if 'response_headers' in batch_info and batch_info['response_headers']:
                     trace_id = batch_info['response_headers'].get('cp-trace-id')
@@ -91,9 +85,16 @@ def display_api_results(api_results: List[Dict]):
                 if 'response' in batch_info:
                     st.subheader("API Response")
                     if batch_info['response']:
-                        # Format and display the JSON response
-                        import json
-                        st.code(json.dumps(batch_info['response'], indent=2), language='json')
+                        # Toggle switch for response view
+                        show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"response_view_{result['batch']}")
+                        
+                        if show_as_code:
+                            # Format and display the JSON response as code
+                            import json
+                            st.code(json.dumps(batch_info['response'], indent=2), language='json')
+                        else:
+                            # Display as interactive JSON tree (default)
+                            st.json(batch_info['response'])
                     else:
                         st.info("No response body returned")
                 else:

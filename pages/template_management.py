@@ -16,6 +16,61 @@ from templates.session_base_template_manager import SessionBaseTemplateManager
 from templates.bulk_template_manager import BulkTemplateManager
 from data_creation.template_generator import TemplateGenerator
 
+
+def _sync_generator_to_session_templates(template_generator):
+    """
+    Sync templates from the template generator to session state
+    This ensures imported templates are available in the editor
+    
+    Args:
+        template_generator: TemplateGenerator instance with templates to sync
+    """
+    for template_name, template_content in template_generator.generation_templates.items():
+        # Create session state key for this template
+        content_key = f"template_content_{template_name}"
+        
+        # Convert template content to JSON string and store in session state
+        try:
+            template_json = json.dumps(template_content, indent=2)
+            st.session_state[content_key] = template_json
+            print(f"Synced template {template_name} to session state")
+        except Exception as e:
+            print(f"Warning: Could not sync template {template_name} to session state: {e}")
+            continue
+
+
+
+def _sync_session_templates_to_generator(template_generator):
+    """
+    Sync all template changes from session state to the template generator
+    This ensures exports include the latest edits from the UI
+    
+    Args:
+        template_generator: TemplateGenerator instance to update
+    """
+    # Find all template content keys in session state
+    template_content_keys = [k for k in st.session_state.keys() if k.startswith('template_content_')]
+    
+    for content_key in template_content_keys:
+        # Extract template name from the key
+        template_name = content_key.replace('template_content_', '')
+        
+        try:
+            # Get the template content from session state
+            template_json = st.session_state[content_key]
+            
+            # Parse and validate the JSON
+            template_content = json.loads(template_json)
+            
+            # Update the template generator with the session state content
+            template_generator.generation_templates[template_name] = template_content
+            
+        except (json.JSONDecodeError, KeyError) as e:
+            # Skip invalid templates but don't break the export
+            print(f"Warning: Could not sync template {template_name}: {e}")
+            continue
+
+
 # Initialize the session-only template manager
 def get_session_template_manager():
     """Get session-only template manager instance - no server storage"""
@@ -38,29 +93,6 @@ st.title("🗂️ Template Management")
 # Sidebar navigation
 render_sidebar()
 # Template overview expanders
-with st.sidebar:
-    with st.expander(f"📋 Base Templates ({len(template_manager.base_templates)})", expanded=False):
-        if template_manager.base_templates:
-            for template_name in sorted(template_manager.base_templates.keys()):
-                template_info = template_manager.get_template_info(template_name)
-                field_count = template_info.get('field_count', 0)
-                st.write(f"• **{template_name}** ({field_count} fields)")
-        else:
-            st.info("No base templates loaded in session")
-
-    with st.expander(f"⚙️ Generation Templates ({len(template_generator.generation_templates)})", expanded=False):
-        if template_generator.generation_templates:
-            for template_name in sorted(template_generator.generation_templates.keys()):
-                template = template_generator.generation_templates[template_name]
-                field_count = 0
-                if isinstance(template, dict):
-                    field_count += len(template.get("StaticFields", {}))
-                    field_count += len(template.get("DynamicFields", {}))
-                    field_count += len(template.get("RandomFields", []))
-                    field_count += len(template.get("LinkedFields", {}))
-                st.write(f"• **{template_name}** ({field_count} total fields)")
-        else:
-            st.info("No generation templates loaded in session")
 
 
 # Warning about session-only storage
@@ -70,31 +102,6 @@ Manage templates that define the structure for data generation.
 These templates contain the default field values and structure for different API endpoints.
 **All templates exist only in your current session - no server storage.**
 """)
-
-
-# Session management buttons
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("🔄 Refresh Session", help="Reinitialize session templates"):
-        template_manager.load_templates()
-        st.rerun()
-
-with col2:
-    if st.button("🗑️ Clear All Templates", help="Remove all templates from session", type="secondary"):
-        if st.session_state.get("confirm_clear_all", False):
-            template_manager.clear_all_templates()
-            template_generator.generation_templates.clear()
-            st.success("All templates cleared from session")
-            st.rerun()
-        else:
-            st.session_state["confirm_clear_all"] = True
-            st.warning("Click again to confirm clearing all templates")
-
-with col3:
-    st.metric("Base Templates", len(template_manager.base_templates))
-
-st.markdown("---")
 
 
 # Main functionality tabs
@@ -200,7 +207,7 @@ with tab1:
                 st.error(f"Error reading file: {str(e)}")
 
 with tab2:
-    st.header("📝 Template Editor")
+    st.header("📝 Base Template Editor")
     
     if template_manager.base_templates:
         # Template selector
@@ -437,6 +444,10 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown("### 📤 Export All Generation Templates")
     st.write(f"Export all {len(template_generator.generation_templates)} generation templates as a single JSON file.")
+    
+    # Sync any session state changes to template generator before export
+    _sync_session_templates_to_generator(template_generator)
+    
     json_str, export_data = BulkTemplateManager.export_all_templates(template_generator)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"session_generation_templates_export_{timestamp}.json"
@@ -501,6 +512,9 @@ with col2:
                 if success:
                     st.session_state.last_gen_file = uploaded_file.file_id
                     
+                    # Sync imported templates to session state
+                    _sync_generator_to_session_templates(template_generator)
+                    
                     if imported:
                         st.rerun()
                 else:
@@ -524,7 +538,7 @@ if template_generator.generation_templates:
         for template in template_generator.generation_templates.values():
             if isinstance(template, dict):
                 total_fields += len(template.get("StaticFields", {}))
-                total_fields += len(template.get("DynamicFields", {}))
+                total_fields += len(template.get("SequenceFields", {}))
                 total_fields += len(template.get("RandomFields", []))
                 total_fields += len(template.get("LinkedFields", {}))
         st.metric("Total Fields", total_fields)
@@ -540,7 +554,7 @@ if template_generator.generation_templates:
             field_count = 0
             if isinstance(template, dict):
                 field_count += len(template.get("StaticFields", {}))
-                field_count += len(template.get("DynamicFields", {}))
+                field_count += len(template.get("SequenceFields", {}))
                 field_count += len(template.get("RandomFields", []))
                 field_count += len(template.get("LinkedFields", {}))
             

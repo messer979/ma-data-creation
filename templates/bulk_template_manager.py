@@ -77,9 +77,11 @@ class BulkTemplateManager:
             # Process each template
             for template_entry in parsed_data["templates"]:
                 if not isinstance(template_entry, dict):
+                    print(f"Skipping invalid template entry: {template_entry}")
                     continue
                 
                 if "name" not in template_entry or "content" not in template_entry:
+                    print(f"Skipping template with missing name or content fields: {template_entry}")
                     continue
                 
                 template_name = template_entry["name"]
@@ -88,11 +90,13 @@ class BulkTemplateManager:
                 # Validate template content structure
                 if not BulkTemplateManager._validate_template_structure(template_content):
                     skipped_templates.append(f"{template_name} (invalid structure)")
+                    print(f"Skipping template {template_name} due to _validate_template_structure")
                     continue
                 
                 # Check if template already exists
                 if template_name in template_generator.generation_templates and not overwrite_existing:
                     skipped_templates.append(f"{template_name} (already exists)")
+                    print(f"Skipping existing template {template_name} (overwrite not allowed)")
                     continue
                 
                 # Update template in session memory only (no file write)
@@ -101,11 +105,13 @@ class BulkTemplateManager:
                     imported_templates.append(template_name)
                     
                 except Exception as e:
+                    print(f"Error updating template {template_name}: {str(e)}")
                     skipped_templates.append(f"{template_name} (session error: {str(e)})")
             
             # No file reload needed since we're updating session directly
             
             message = f"Import completed. {len(imported_templates)} templates imported to session"
+            print(message)
             if skipped_templates:
                 message += f", {len(skipped_templates)} skipped"
             
@@ -130,7 +136,7 @@ class BulkTemplateManager:
         if not isinstance(template, dict):
             return False
         
-        required_sections = ["StaticFields", "DynamicFields", "RandomFields", "LinkedFields"]
+        required_sections = ["StaticFields", "SequenceFields", "RandomFields", "LinkedFields"]
         
         for section in required_sections:
             if section not in template:
@@ -145,7 +151,7 @@ class BulkTemplateManager:
                 return False
         
         # Validate other sections are dicts
-        for section in ["StaticFields", "DynamicFields", "LinkedFields"]:
+        for section in ["StaticFields", "SequenceFields", "LinkedFields"]:
             if not isinstance(template[section], dict):
                 return False
         
