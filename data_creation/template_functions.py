@@ -1295,7 +1295,6 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
         The result of the operation, or original value if operation fails
     """
     try:
-        print(f'apply_operation_to_value: value={value}, operation={operation}')
         # Parse the operation
         if not operation or not isinstance(operation, str):
             return value
@@ -1314,7 +1313,6 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
         # Check if operand is a range format like (1,5) or (200,1000)
         range_pattern = r'^\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$'
         range_match = re.match(range_pattern, operand_str)
-        print(range_match)
         if range_match:
             # Parse range format: (min,max)
             try:
@@ -1331,7 +1329,6 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
                     max_val = float(max_str)
                     operand = random.uniform(min_val, max_val)
             except (ValueError, IndexError):
-                raise
                 return value  # Invalid range format
         else:
             # Single value format - handle multi-digit numbers and floats
@@ -1343,7 +1340,6 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
                     # Try float
                     operand = float(operand_str)
             except ValueError:
-                raise
                 # Invalid operand
                 return value
         
@@ -1358,10 +1354,8 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
                 except ValueError:
                     numeric_value = float(value)
         except (ValueError, TypeError):
-            raise
             # Value cannot be converted to number
             return value
-        print(numeric_value, operand, operator)
         # Apply the operation
         if operator == '+':
             result = numeric_value + operand
@@ -1382,7 +1376,6 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
         else:
             # Unknown operator
             return value
-        print(f'result: {result}')
         # Preserve the original type if possible
         if isinstance(value, int) and isinstance(result, float) and result.is_integer():
             return int(result)

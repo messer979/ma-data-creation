@@ -66,15 +66,6 @@ def main():
     # Title and description
     st.title("🚀 Rapid Active Data")
     st.markdown("Generate massive amounts of test data using JSON templates and send via API calls")
-    theme = st.get_option("theme.base")
-    try:
-        # theme = st_theme()
-        if theme == 'dark':
-            st.session_state.ace_theme = "nord_dark"
-        else:
-            st.session_state.ace_theme = "github"
-    except TypeError:
-        st.session_state.ace_theme = "github"    # Render sidebar configuration
     render_sidebar()
     
       # Main content area (single column layout)
