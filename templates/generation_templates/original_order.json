@@ -72,7 +72,12 @@
     {
       "FieldName": "DestinationAddress.Email",
       "FieldType": "email"
+    },
+    {
+      "FieldName": "OriginalOrderLine.ItemId",
+      "FieldType": "choiceUnique(KRITEM_001,KRITEM_002,KRIT)"
     }
   ],
-  "LinkedFields": {}
+  "LinkedFields": {},
+  "QueryContextFields": {}
 }

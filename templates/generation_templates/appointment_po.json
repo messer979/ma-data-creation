@@ -1,0 +1,109 @@
+{
+  "StaticFields": {
+    "ContentType": "POs",
+    "CreatedSourceId": "Manual",
+    "AppointmentTypeId": "DROP_UNLOAD",
+    "CreatedSourceType": "SHIPPER",
+    "ContentTypeDescription": "Purchase Orders",
+    "FacilityTimezone": "US/Eastern",
+    "TractorId": null,
+    "AppointmentStatusId": "3000",
+    "AppointmentContents.InboundIndicator": false,
+    "AppointmentContents.ShipmentId": null,
+    "AppointmentContents.Quantity": null,
+    "AppointmentContents.BillOfLadingNumber": null,
+    "AppointmentContents.QuantityUomId": null,
+    "AppointmentContents.ProNumber": null,
+    "AppointmentContents.EntityLabels": null,
+    "AppointmentContents.SupplierPurchaseOrderIndicator": false,
+    "AppointmentContents.AsnId": null,
+    "PurchaseOrder.BillOfLadingNumber": null,
+    "PurchaseOrder.ProNumber": null,
+    "PurchaseOrder.AppointmentContentBolNumber": null,
+    "PurchaseOrder.AppointmentContentProNumber": null,
+    "PurchaseOrder.AppointmentContentQuantity": null,
+    "PurchaseOrder.AppointmentContentQuantityUomId": null,
+    "Resources.GroupName": "Drops"
+  },
+  "SequenceFields": {
+    "AppointmentId": {
+      "prefix": "APT-{{dttm}}-",
+      "start": 1000,
+      "increment": 1
+    },
+    "CheckedInTrailerId": {
+      "prefix": "CMTL{{dttm}}",
+      "start": 1,
+      "increment": 1
+    },
+    "AppointmentContents.PurchaseOrderId.PurchaseOrderId": {
+      "prefix": "CM_PO_{{dttm}}_",
+      "start": 1,
+      "increment": 1
+    },
+    "PurchaseOrder.PurchaseOrderId": {
+      "prefix": "CM_PO_{{dttm}}_",
+      "start": 1,
+      "increment": 1
+    }
+  },
+  "ArrayLengths": {
+    "Resources": 1,
+    "AppointmentContents": 1,
+    "PurchaseOrder": 1,
+    "AppointmentContact": 0,
+    "PlannedDockDoors": 0,
+    "UserLoadInformation": 0,
+    "AppointmentSchedules": 0
+  },
+  "RandomFields": [
+    {
+      "FieldName": "Duration",
+      "FieldType": "choice(60,90,120,150,180)"
+    },
+    {
+      "FieldName": "PreferredDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "ArrivalDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "EstimatedArrivalDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "VendorId",
+      "FieldType": "choice(KR_VENDOR_019,KR_VENDOR_020,KR_VENDOR_021,VENDOR_001,VENDOR_002)"
+    },
+    {
+      "FieldName": "Resources.ResourceName",
+      "FieldType": "choice(Resource Unit 1,Resource Unit 2,Resource Unit 3,Dock Door A,Dock Door B)"
+    },
+    {
+      "FieldName": "PurchaseOrder.VendorId",
+      "FieldType": "choice(KR_VENDOR_019,KR_VENDOR_020,KR_VENDOR_021,VENDOR_001,VENDOR_002)"
+    },
+    {
+      "FieldName": "PurchaseOrder.DestinationFacilityId",
+      "FieldType": "choice(MANH-DEV-L2,MANH-DEV-L3,FACILITY-001)"
+    }
+  ],
+  "LinkedFields": {
+    "AppointmentContents.PurchaseOrderId.PurchaseOrderId": [
+      "PurchaseOrder.PurchaseOrderId"
+    ],
+    "VendorId": [
+      "PurchaseOrder.VendorId"
+    ],
+    "FacilityId": [
+      "AppointmentContents.FacilityId",
+      "PurchaseOrder.DestinationFacilityId"
+    ],
+    "PreferredDateTime": [
+      "ArrivalDateTime",
+      "EstimatedArrivalDateTime"
+    ]
+  }
+}
