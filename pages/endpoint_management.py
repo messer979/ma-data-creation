@@ -28,9 +28,7 @@ def main():
     st.markdown("Configure API endpoints, authentication, and payload settings for your data generation templates.")
         # Ensure session state config exists
     if not st.session_state.get('config_loaded', False):
-        print('Loading initial configuration...')
         load_initial_config_to_session()
-        print('st.session_state endpoint: ', st.session_state.user_endpoint_config)
     # Create two columns for better layout
     col1, col2 = st.columns([1, 1])
     

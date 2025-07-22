@@ -52,6 +52,18 @@ def load_initial_config_to_session(config_file='configuration.json'):
                 st.session_state['shared_token'] = headers.get('Authorization', '')
                 st.session_state['selected_organization'] = headers.get('SelectedOrganization', '')
                 st.session_state['selected_location'] = headers.get('SelectedLocation', '')
+
+            theme = st.get_option("theme.base")
+            try:
+                # theme = st_theme()
+                if theme == 'dark':
+                    st.session_state.ace_theme = "nord_dark"
+                else:
+                    st.session_state.ace_theme = "github"
+            except TypeError:
+                st.session_state.ace_theme = "github"    # Render sidebar configuration
+
+
             st.session_state['config_loaded'] = True
         except Exception as e:
             st.session_state['user_endpoint_config'] = {}
