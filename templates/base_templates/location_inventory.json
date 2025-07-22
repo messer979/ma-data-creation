@@ -1,0 +1,11 @@
+{
+    "SourceContainerId": "",
+    "SourceLocationId": "",
+    "SourceContainerType": "LOCATION",
+    "TransactionType": "INVENTORY_ADJUSTMENT",
+    "ItemId": "",
+    "PixEventName": "INVENTORY_ADJUSTMENT",
+    "Quantity": 1,
+    "PixTransactionType": "ADJUST_UI",
+    "ExpirationDate": null
+}

@@ -1,0 +1,84 @@
+[
+    {
+        "ContentType": "POs",
+        "CreatedSourceId": "Manual",
+        "AppointmentTypeId": "DROP_UNLOAD",
+        "ExternalUpdatedSource": null,
+        "ModeId": null,
+        "WindowStartDateTime": null,
+        "PreferredDateTime": "2025-07-16T04:00:00",
+        "ArrivalDateTime": "2025-07-16T04:00:00",
+        "SkipAvailabilityCheck": false,
+        "Duration": 120,
+        "AssignedDoorId": null,
+        "DriverId": null,
+        "AppointmentId": "Apt-00000000000000005",
+        "Resources": [
+            {
+                "GroupName": "Drops",
+                "ResourceName": "Resource Unit 1"
+            }
+        ],
+        "CreatedSourceType": "SHIPPER",
+        "VendorId": "",
+        "TrailerId": null,
+        "CarrierId": null,
+        "PlannedDockDoors": [],
+        "UserLoadInformation": [],
+        "ContentTypeDescription": "Purchase Orders",
+        "FacilityTimezone": "US/Eastern",
+        "TemplateId": null,
+        "EstimatedArrivalDateTime": "2025-07-16T04:00:00",
+        "WindowEndDateTime": null,
+        "Comments": null,
+        "EquipmentTypeId": null,
+        "AssignedDockId": null,
+        "CheckedInTrailerId": "CMTL071601",
+        "ExternalCreatedSource": null,
+        "EntityLabels": null,
+        "AppointmentContact": [
+        ],
+        "TractorId": null,
+        "OrgId": "MA-DEV-L2",
+        "FacilityId": "MA-DEV-L2",
+        "AppointmentContents": [
+            {
+                "Appointment": {},
+                "ShipmentId": null,
+                "InboundIndicator": false,
+                "Quantity": null,
+                "BillOfLadingNumber": null,
+                "QuantityUomId": null,
+                "ProNumber": null,
+                "EntityLabels": null,
+                "OrgId": "MA-DEV-L2",
+                "FacilityId": "MA-DEV-L2",
+                "SupplierPurchaseOrderIndicator": false,
+                "PurchaseOrderId": {
+                    "PurchaseOrderId": "CM_PO1_0715_006"
+                },
+                "AsnId": null
+            }
+        ],
+        "UpdatedSourceId": "Yard",
+        "PurchaseOrder": [
+            {
+                "Actions": {},
+                "Messages": null,
+                "PurchaseOrderId": "CM_PO1_0715_006",
+                "DestinationFacilityId": "MA-DEV-L2",
+                "VendorId": "",
+                "BillOfLadingNumber": null,
+                "ProNumber": null,
+                "AppointmentContentBolNumber": null,
+                "AppointmentContentProNumber": null,
+                "AppointmentContentQuantity": null,
+                "AppointmentContentQuantityUomId": null,
+                "Extended": {}
+            }
+        ],
+        "AppointmentSchedules": [
+        ],
+    "AppointmentStatusId": "3000"
+    }
+]

@@ -1,0 +1,61 @@
+{
+  "StaticFields": {
+    "ContentType": "SHIPMENTS",
+    "ContentTypeDescription": "Shipments",
+    "AppointmentTypeId": "DROP_UNLOAD",
+    "AppointmentStatusId": "3000",
+    "CarrierId": "SWDF",
+    "AppointmentContents.InboundIndicator": false,
+    "AppointmentContents.Quantity": null,
+    "AppointmentContents.BillOfLadingNumber": null,
+    "AppointmentContents.QuantityUomId": null,
+    "AppointmentContents.ProNumber": null,
+    "AppointmentContents.EntityLabels": null,
+    "AppointmentContents.SupplierPurchaseOrderIndicator": false,
+    "AppointmentContents.PurchaseOrderId": null,
+    "AppointmentContents.AsnId": null,
+    "Shipment.Actions": {},
+    "Shipment.Messages": null,
+    "Shipment.BillOfLadingNumber": null,
+    "Shipment.ProNumber": null,
+    "Shipment.Extended": {},
+    "Resources.GroupName": "Receiving",
+    "Resources.ResourceName": "Drop Unload"
+  },
+  "SequenceFields": {
+    "AppointmentId": "APT-{{dttm}}-",
+    "Shipment.ShipmentId": "SHP-{{dttm}}-",
+    "Shipment.StopId": "STP-{{dttm}}-"
+  },
+  "ArrayLengths": {
+    "Shipment": 1,
+    "AppointmentContents": 1,
+    "Resources": 1
+  },
+  "RandomFields": [
+    {
+      "FieldName": "PreferredDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "ArrivalDateTime",
+      "FieldType": "datetime(future)"
+    },
+    {
+      "FieldName": "ScheduledDateTime", 
+      "FieldType": "datetime(future)"
+    }
+  ],
+  "LinkedFields": {
+    "Shipment.ShipmentId": [
+      "AppointmentContents.ShipmentId.ShipmentId"
+    ],
+    "Shipment.StopId": [
+      "AppointmentContents.ShipmentId.StopId"
+    ],
+    "PreferredDateTime": [
+      "ArrivalDateTime",
+      "ScheduledDateTime"
+    ]
+  }
+}

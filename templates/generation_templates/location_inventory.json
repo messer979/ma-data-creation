@@ -1,0 +1,29 @@
+{
+    "StaticFields": {
+        "SourceContainerType": "LOCATION",
+        "TransactionType": "INVENTORY_ADJUSTMENT",
+        "PixEventName": "INVENTORY_ADJUSTMENT",
+        "PixTransactionType": "ADJUST_UI",
+        "ExpirationDate": null
+    },
+    "SequenceFields": {},
+    "ArrayLengths": {},
+    "RandomFields": [
+        {
+            "FieldName": "SourceContainerId",
+            "FieldType": "choice(location1,location2,location3,location4)"
+        },
+        {
+            "FieldName": "ItemId",
+            "FieldType": "choice(item1,item2,item3,item4)"
+        },
+        {
+            "FieldName": "Quantity",
+            "FieldType": "int(10,100)"
+        }
+    ],
+    "LinkedFields": {
+        "SourceContainerId": [
+            "SourceLocationId"]
+    }
+}

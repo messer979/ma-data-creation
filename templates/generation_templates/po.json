@@ -1,7 +1,8 @@
 {
     "StaticFields": {
         "PurchaseOrderStatus": "2000",
-        "DestinationFacilityId": "MA-DEV-L2",
+        "OriginFacilityId": null,
+        "DestinationFacilityId": "MANH-DEV-L2",
         "Closed": false,
         "Canceled": false,
         "PurchaseOrderLine.QuantityUomId": "Unit",

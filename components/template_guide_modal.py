@@ -5,11 +5,12 @@ def guide_modal():
     """Comprehensive help guide for the Data Creation Tool"""
     
     # Create tabs for different help sections
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🏠 Overview", 
         "📋 Template Types",
         "🔧 Endpoint Config", 
-        "📝 Generation Templates", 
+        "📝 Generation Templates",
+        "🔍 Query Context",
         "🛠️ Template Manager"
     ])
     
@@ -196,6 +197,39 @@ def guide_modal():
             "ItemId": ["PrimaryBarCode", "Description"]
         }
         ```
+        
+        **🔍 QueryContextFields:** Use SQL query results for realistic data
+        ```json
+        "QueryContextFields": {
+            "facility_id": {
+                "query": "facilities",
+                "column": "facility_id",
+                "mode": "random"
+            },
+            "calculated_quantity": {
+                "query": "items",
+                "column": "PACKS_QUANTITY",
+                "mode": "match",
+                "template_key": "item_id",
+                "query_key": "ITEM_ID",
+                "operation": "*(3,7)"
+            }
+        }
+        ```
+        
+        **Query Context Modes:**
+        - `random` - Random value from query column
+        - `unique` - Random from unique values only
+        - `sequential` - Deterministic selection
+        - `match` - Lookup based on template/query key relationship
+        
+        **Mathematical Operations:**
+        - `+10` - Add 10 to value
+        - `*(3,7)` - Multiply by random number between 3-7
+        - `-(1,5)` - Subtract random number between 1-5
+        - `/2` - Divide by 2
+        - `%100` - Modulo 100
+        
           **📊 ArrayLengths:** Define array sizes for automatic expansion
         ```json
         "ArrayLengths": {
@@ -220,6 +254,12 @@ def guide_modal():
         - `boolean` - True/false values
         - `uuid` - UUID string generation
         - `email` - Random email addresses
+        
+        ### Query Context Integration:
+        - Use **Query Context page** to execute SQL queries against target environment
+        - Reference query results in `QueryContextFields` for realistic data generation
+        - Supports mathematical operations on query values: `*(1,10)`, `+50`, etc.
+        - Match mode enables lookups: find vendor for specific item, etc.
           ### Nested Fields:
         Use dot notation for nested objects and arrays:
         - `Address.City` - City field in Address object
@@ -233,7 +273,131 @@ def guide_modal():
         - **Export before closing** to save your customizations
         """)
     
-    with tab5:        
+    with tab5:
+        st.markdown("""
+        ## 🔍 Query Context Integration
+        
+        The Query Context feature allows you to execute SQL queries against your target environment and use the results to generate realistic test data.
+        
+        ### 🚀 Getting Started:
+        
+        **1. Execute Queries:**
+        - Navigate to **🔍 Query Context** page
+        - Connect to your target database/API
+        - Execute SQL queries to fetch reference data
+        - Name your queries for easy reference
+        
+        **2. Use in Templates:**
+        - Reference query results in `QueryContextFields`
+        - Generate data based on real system values
+        - Create relationships between generated records
+        
+        ### 📊 Query Execution:
+        
+        **SQL Editor Features:**
+        - **Syntax highlighting** and formatting
+        - **Pretty print** functionality for readability
+        - **Organization input** for API context
+        - **Query naming** for template reference
+        
+        **Data Storage:**
+        - **Session-only storage** - no server persistence
+        - **DataFrame format** for easy manipulation
+        - **Quick access** from generation templates
+        - **Memory efficient** storage in session state
+        
+        ### 🔧 Template Integration:
+        
+        **QueryContextFields Structure:**
+        ```json
+        "QueryContextFields": {
+            "facility_id": {
+                "query": "facilities",
+                "column": "facility_id", 
+                "mode": "random"
+            },
+            "calculated_price": {
+                "query": "items",
+                "column": "base_price",
+                "mode": "match",
+                "template_key": "item_id",
+                "query_key": "item_id",
+                "operation": "*(1.1,1.5)"
+            }
+        }
+        ```
+        
+        ### 🎯 Selection Modes:
+        
+        **`random`**: Random value from query column
+        - Picks any random value from the specified column
+        - Good for general reference data like facilities, vendors
+        
+        **`unique`**: Random from unique values only  
+        - Ensures no duplicate values in generated data
+        - Useful for fields that should be unique
+        
+        **`sequential`**: Deterministic selection
+        - Uses consistent selection based on field name
+        - Same field always gets same value for reproducibility
+        
+        **`match`**: Lookup based on relationships
+        - Finds related data based on key matching
+        - Requires `template_key` and `query_key` parameters
+        - Example: Find vendor for specific item
+        
+        ### ⚙️ Mathematical Operations:
+        
+        Apply transformations to query values:
+        
+        **Basic Operations:**
+        - `+10` - Add 10 to the value
+        - `-5` - Subtract 5 from the value  
+        - `*2` - Multiply by 2
+        - `/3` - Divide by 3
+        - `%100` - Modulo 100
+        
+        **Range Operations (NEW):**
+        - `*(1,10)` - Multiply by random number between 1-10
+        - `+(50,200)` - Add random number between 50-200
+        - `-(1,5)` - Subtract random number between 1-5
+        - `/(2,4)` - Divide by random number between 2-4
+        
+        ### 💡 Use Cases:
+        
+        **Reference Data Generation:**
+        - Use real facility IDs, item codes, vendor numbers
+        - Ensure generated data matches system constraints
+        - Maintain referential integrity in test data
+        
+        **Realistic Calculations:**
+        - Base prices on actual item costs with markup
+        - Calculate quantities based on pack sizes
+        - Generate dates relative to existing schedules
+        
+        **Data Relationships:**
+        - Link orders to valid customers
+        - Assign items to correct vendors
+        - Match facilities with appropriate locations
+        
+        ### ⚠️ Important Notes:
+        
+        - **Query results stored in session only**
+        - **Lost on page refresh** - re-execute as needed
+        - **No server-side caching** - completely stateless
+        - **Failed queries ignored** - templates continue with other fields
+        - **Performance**: Large result sets may slow generation
+        
+        ### 🔍 Best Practices:
+        
+        - **Name queries clearly** for easy template reference
+        - **Limit result sets** to essential data only
+        - **Test queries first** before using in templates
+        - **Use match mode** for creating realistic relationships
+        - **Apply operations** to add variability to real data
+        """)
+    
+    with tab6:        
         st.markdown("""
         ## 🛠️ Template Manager (Session-Only)
         

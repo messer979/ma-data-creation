@@ -11,6 +11,7 @@ def render_sidebar():
         st.page_link('pages/endpoint_management.py', label='Endpoint Management', icon='🔧')
         st.page_link('pages/inventory_import.py', label='Inventory Import', icon='📦')
         st.page_link('pages/order_import.py', label='Order Import', icon='🧾')
+        st.page_link('pages/query_context.py', label='Query Context', icon='🔍')
         if st.button("❓ Help", help="Open Help Guide for Data Creation Tool"):
             guide_modal()
         st.markdown("---")

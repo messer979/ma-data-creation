@@ -5,6 +5,7 @@ A powerful Streamlit-based web application for generating massive amounts of tes
 ## ✨ Features
 
 - **Template-Based Data Generation**: Generate test data using customizable JSON templates
+- **Query Context Integration**: Execute SQL queries against target environments to gather real data for context-aware generation
 - **Configurable API Endpoints**: Template-specific endpoint configuration with payload wrapping
 - **Batch Processing**: Send data in configurable batch sizes to prevent API overload
 - **Real-time Payload Preview**: See how your data will be structured before sending
@@ -108,6 +109,111 @@ Endpoint configurations support:
 ### Configuration Files
 - **`configuration.json`**: Default system configuration
 - **`user_config.json`**: User-specific overrides (gitignored)
+
+## 🔍 Query Context Integration
+
+The Query Context feature allows you to execute SQL queries against your target environment to gather real data for context-aware template generation. This enables creating test data that references actual entities in your system.
+
+### How It Works
+
+1. **Execute Queries**: Run SQL queries against your target database via API
+2. **Store Results**: Query results are stored as pandas DataFrames in session state
+3. **Use in Templates**: Reference query results in your generation templates using `QueryContextFields`
+
+### Setting Up Query Context
+
+1. **Configure Base URL**: Set your target environment's base URL in the sidebar
+2. **Navigate to Query Context**: Go to the "Query Context" page
+3. **Execute Queries**: Enter SQL queries to gather reference data
+
+#### Example Query
+```sql
+SELECT facility_id, facility_name, status 
+FROM facilities 
+WHERE status = 'ACTIVE' 
+LIMIT 100
+```
+
+### Using Query Results in Templates
+
+Add `QueryContextFields` to your generation templates to use query results:
+
+```json
+{
+  "QueryContextFields": {
+    "facility_id": {
+      "query": "facilities",
+      "column": "facility_id", 
+      "mode": "random"
+    },
+    "item_id": {
+      "query": "items",
+      "column": "item_id",
+      "mode": "unique"
+    },
+    "OriginalOrderLine.OrderedQuantity": {
+      "query": "items",
+      "column": "PACKS_QUANTITY",
+      "mode": "match",
+      "template_key": "OriginalOrderLine.ItemId",
+      "query_key": "ITEM_ID",
+      "operation": "*5"
+    }
+  }
+}
+```
+
+#### Query Modes
+- **`random`**: Select random values from the column
+- **`unique`**: Select from unique values only
+- **`sequential`**: Select values in a deterministic sequence
+- **`match`**: Lookup a specific row where template_key matches query_key, then use the column value from that row
+
+#### Mathematical Operations
+Add an `operation` field to perform calculations on retrieved values:
+- **`*5`**: Multiply by 5
+- **`*(1,5)`**: Multiply by random integer between 1 and 5
+- **`+10`**: Add 10
+- **`+(5,15)`**: Add random number between 5 and 15
+- **`-3`**: Subtract 3  
+- **`-(1,10)`**: Subtract random number between 1 and 10
+- **`/2`**: Divide by 2
+- **`/(2,5)`**: Divide by random number between 2 and 5
+- **`%100`**: Modulo 100
+- **`%(10,50)`**: Modulo by random number between 10 and 50
+- **`^2`** or **`**2`**: Power of 2
+- **`^(2,4)`** or **`**(2,4)`**: Power of random number between 2 and 4
+
+Example: Multiply pack quantity by random value between 3 and 7:
+```json
+"OriginalOrderLine.OrderedQuantity": {
+  "query": "items",
+  "column": "PACKS_QUANTITY", 
+  "mode": "match",
+  "template_key": "OriginalOrderLine.ItemId",
+  "query_key": "ITEM_ID",
+  "operation": "*(3,7)"
+}
+```
+
+### Benefits
+
+- **Data Consistency**: Generate data using real facility IDs, item codes, etc.
+- **Realistic Testing**: Create test scenarios with actual system constraints
+- **Reference Integrity**: Ensure generated data references valid entities
+- **Context Awareness**: Generate data that makes sense within your system's current state
+
+### Query Context API
+
+The feature assumes your target environment has a query endpoint at `/api/query` that accepts:
+```json
+{
+  "query": "SELECT * FROM table",
+  "format": "json"
+}
+```
+
+Adjust the API endpoint structure in `pages/query_context.py` to match your system's API.
 
 ## 🧪 Testing
 

@@ -12,6 +12,44 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from copy import deepcopy
 
+# Import query context utilities for template generation
+try:
+    from data_creation.query_context_utils import (
+        get_query_dataframe, 
+        sample_from_query, 
+        get_random_value_from_column,
+        get_unique_column_values,
+        filter_query_data,
+        query_exists
+    )
+    QUERY_CONTEXT_AVAILABLE = True
+except ImportError:
+    QUERY_CONTEXT_AVAILABLE = False
+
+
+def get_query_context_globals() -> Dict[str, Any]:
+    """
+    Get global variables for query context that can be used in template generation
+    
+    Returns:
+        Dictionary of global variables including query utility functions
+    """
+    if not QUERY_CONTEXT_AVAILABLE:
+        return {}
+    
+    return {
+        'get_query_dataframe': get_query_dataframe,
+        'sample_from_query': sample_from_query,
+        'get_random_value_from_column': get_random_value_from_column,
+        'get_unique_column_values': get_unique_column_values,
+        'filter_query_data': filter_query_data,
+        'query_exists': query_exists,
+        # Add some convenience functions
+        'random_facility': lambda: get_random_value_from_column('facilities', 'facility_id') if query_exists('facilities') else None,
+        'random_item': lambda: get_random_value_from_column('items', 'item_id') if query_exists('items') else None,
+        'random_vendor': lambda: get_random_value_from_column('vendors', 'vendor_id') if query_exists('vendors') else None,
+    }
+
 
 def apply_static_fields(record: Dict[str, Any], static_fields: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -509,6 +547,10 @@ def create_record_from_template(base_template: Dict[str, Any],
     # Apply linked fields with array handling
     if 'LinkedFields' in generation_template:
         record = apply_linked_fields_with_arrays(record, generation_template['LinkedFields'], array_lengths)
+    
+    # Apply query context fields if available (new feature)
+    if 'QueryContextFields' in generation_template and QUERY_CONTEXT_AVAILABLE:
+        record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths)
     
     return record
 
@@ -1178,3 +1220,263 @@ def apply_to_nested_arrays_with_unique_context(record: Dict[str, Any], array_pat
     
     # Start navigation from the record
     navigate_and_apply_unique(record, path_parts)
+
+
+def apply_query_context_fields_with_arrays(record: Dict[str, Any], 
+                                         query_context_fields: Dict[str, Any], 
+                                         array_lengths: Dict[str, int]) -> Dict[str, Any]:
+    """
+    Apply query context fields to a record with array handling
+    
+    Args:
+        record: The record to modify
+        query_context_fields: Dictionary of field_name -> query specification
+        array_lengths: Dictionary of array_name -> length mappings
+    
+    Returns:
+        Modified record
+    """
+    for field_name, query_spec in query_context_fields.items():
+        # Find the array path and field suffix
+        array_path, field_suffix = find_array_path_and_suffix(field_name, array_lengths)
+        
+        if array_path:
+            # Handle array field
+            apply_query_context_field_to_array(record, array_path, field_suffix, query_spec)
+        else:
+            # Handle non-array field
+            apply_query_context_field(record, field_name, query_spec)
+    
+    return record
+
+
+def apply_query_context_field_to_array(record: Dict[str, Any], 
+                                     array_path: str, 
+                                     field_suffix: str, 
+                                     query_spec: Dict[str, Any]):
+    """
+    Apply query context field to all elements in an array
+    
+    Args:
+        record: The record containing the array
+        array_path: Path to the array in the record
+        field_suffix: Field name within each array element
+        query_spec: Query specification dictionary
+    """
+    def apply_to_array_elements(current_obj: Dict[str, Any], path_parts: List[str], depth: int = 0):
+        if depth >= len(path_parts):
+            # We've reached the target array level
+            if isinstance(current_obj, list):
+                # Apply to each element in the array
+                for element in current_obj:
+                    if isinstance(element, dict):
+                        apply_query_context_field(element, field_suffix, query_spec)
+            return
+        
+        current_part = path_parts[depth]
+        
+        if current_part in current_obj:
+            apply_to_array_elements(current_obj[current_part], path_parts, depth + 1)
+    
+    # Split array path and apply
+    path_parts = array_path.split('.')
+    apply_to_array_elements(record, path_parts)
+
+
+def apply_operation_to_value(value: Any, operation: str) -> Any:
+    """
+    Apply a mathematical operation to a value
+    
+    Args:
+        value: The value to operate on
+        operation: The operation string (e.g., "*5", "+10", "-3", "/2", "%100")
+        
+    Returns:
+        The result of the operation, or original value if operation fails
+    """
+    try:
+        print(f'apply_operation_to_value: value={value}, operation={operation}')
+        # Parse the operation
+        if not operation or not isinstance(operation, str):
+            return value
+            
+        operation = operation.strip()
+        if not operation:
+            return value
+            
+        # Extract operator and operand
+        operator = operation[0]
+        operand_str = operation[1:].strip()
+        
+        if not operand_str:
+            return value
+        
+        # Check if operand is a range format like (1,5) or (200,1000)
+        range_pattern = r'^\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$'
+        range_match = re.match(range_pattern, operand_str)
+        print(range_match)
+        if range_match:
+            # Parse range format: (min,max)
+            try:
+                min_str, max_str = range_match.groups()
+                
+                # Try to parse as integers first
+                if '.' not in min_str and '.' not in max_str:
+                    min_val = int(min_str)
+                    max_val = int(max_str)
+                    operand = random.randint(min_val, max_val)
+                else:
+                    # Parse as floats
+                    min_val = float(min_str)
+                    max_val = float(max_str)
+                    operand = random.uniform(min_val, max_val)
+            except (ValueError, IndexError):
+                raise
+                return value  # Invalid range format
+        else:
+            # Single value format - handle multi-digit numbers and floats
+            try:
+                # Try integer first (supports negative numbers)
+                if '.' not in operand_str:
+                    operand = int(operand_str)
+                else:
+                    # Try float
+                    operand = float(operand_str)
+            except ValueError:
+                raise
+                # Invalid operand
+                return value
+        
+        # Convert value to number if it's not already
+        try:
+            if isinstance(value, (int, float)):
+                numeric_value = value
+            else:
+                # Try to convert string to number
+                try:
+                    numeric_value = int(value)
+                except ValueError:
+                    numeric_value = float(value)
+        except (ValueError, TypeError):
+            raise
+            # Value cannot be converted to number
+            return value
+        print(numeric_value, operand, operator)
+        # Apply the operation
+        if operator == '+':
+            result = numeric_value + operand
+        elif operator == '-':
+            result = numeric_value - operand
+        elif operator == '*':
+            result = numeric_value * operand
+        elif operator == '/':
+            if operand == 0:
+                return value  # Avoid division by zero
+            result = numeric_value / operand
+        elif operator == '%':
+            if operand == 0:
+                return value  # Avoid modulo by zero
+            result = numeric_value % operand
+        elif operator == '^' or operator == '**':
+            result = numeric_value ** operand
+        else:
+            # Unknown operator
+            return value
+        print(f'result: {result}')
+        # Preserve the original type if possible
+        if isinstance(value, int) and isinstance(result, float) and result.is_integer():
+            return int(result)
+        else:
+            return result
+            
+    except Exception:
+        # If any error occurs, return the original value
+        return value
+
+
+def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spec: Dict[str, Any]):
+    """
+    Apply a single query context field to a record
+    
+    Args:
+        record: The record to modify
+        field_name: Name of the field to set
+        query_spec: Query specification with 'query', 'column', and optional 'mode', 'template_key', 'query_key'
+    """
+    if not QUERY_CONTEXT_AVAILABLE:
+        return
+    
+    try:
+        query_name = query_spec.get('query')
+        column_name = query_spec.get('column')
+        mode = query_spec.get('mode', 'random')  # 'random', 'unique', 'sequential', 'match'
+        
+        if not query_name or not column_name:
+            return
+        
+        if not query_exists(query_name):
+            return
+        
+        # Get value based on mode
+        if mode == 'match':
+            # New match mode - lookup based on template and query keys
+            template_key = query_spec.get('template_key')
+            query_key = query_spec.get('query_key')
+            if not template_key or not query_key:
+                return
+                
+            # Get the value from the template to match against
+            template_value = get_nested_field(record, template_key)
+            if template_value is None:
+                return
+                
+            # Get the dataframe and find matching row
+            df = get_query_dataframe(query_name)
+            if df is None or df.empty:
+                return
+                
+            # Find row where query_key column matches template_value
+            matching_rows = df[df[query_key] == template_value]
+            if not matching_rows.empty:
+                # Use the first matching row
+                value = matching_rows[column_name].iloc[0]
+            else:
+                # No match found, could fall back to random or return None
+                value = None
+                
+        elif mode == 'random':
+            value = get_random_value_from_column(query_name, column_name)
+        elif mode == 'unique':
+            # For unique mode, get all unique values and choose randomly
+            unique_values = get_unique_column_values(query_name, column_name)
+            if unique_values:
+                value = random.choice(unique_values)
+            else:
+                value = None
+        elif mode == 'sequential':
+            # For sequential mode, get all values and choose based on some sequence
+            # This is a simplified implementation - could be enhanced
+            all_values = get_unique_column_values(query_name, column_name)
+            if all_values:
+                # Use field name hash for consistent selection
+                import hashlib
+                field_hash = int(hashlib.md5(field_name.encode()).hexdigest(), 16)
+                index = field_hash % len(all_values)
+                value = all_values[index]
+            else:
+                value = None
+        else:
+            value = get_random_value_from_column(query_name, column_name)
+        
+        # Apply operation if specified and value is not None
+        if value is not None:
+            operation = query_spec.get('operation')
+            if operation:
+                value = apply_operation_to_value(value, operation)
+        
+        if value is not None:
+            set_nested_field(record, field_name, value)
+            
+    except Exception as e:
+        # Silently fail for query context errors to avoid breaking data generation
+        pass
