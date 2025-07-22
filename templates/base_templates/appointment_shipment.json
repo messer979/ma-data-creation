@@ -1,0 +1,45 @@
+{
+    "AppointmentId": "{{appointment_id}}",
+    "Shipment": [
+        {
+            "Actions": {},
+            "Messages": null,
+            "ShipmentId": "{{shipment}}",
+            "StopId": "{{stop}}",
+            "BillOfLadingNumber": null,
+            "ProNumber": null,
+            "Extended": {}
+        }
+    ],
+    "AppointmentContents": [
+        {
+            "Appointment": {},
+            "ShipmentId": {
+                "ShipmentId": "{{shipment}}",
+                "StopId": "{{stop}}"
+            },
+            "InboundIndicator": false,
+            "Quantity": null,
+            "BillOfLadingNumber": null,
+            "QuantityUomId": null,
+            "ProNumber": null,
+            "EntityLabels": null,
+            "SupplierPurchaseOrderIndicator": false,
+            "PurchaseOrderId": null,
+            "AsnId": null
+        }
+    ],
+    "AppointmentTypeId": "DROP_UNLOAD",
+    "ContentType": "SHIPMENTS",
+    "ContentTypeDescription": "Shipments",
+    "PreferredDateTime": "{{dttm_07}}",
+    "ArrivalDateTime": "{{dttm_07}}",
+    "ScheduledDateTime": "{{dttm_07}}",
+    "AppointmentStatusId": "3000",
+    "CarrierId": "SWDF",
+    "Resources": [
+        {
+            "GroupName": "Receiving",
+            "ResourceName": "Drop Unload"
+        }
+    ]}
