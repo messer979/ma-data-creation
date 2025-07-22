@@ -33,9 +33,7 @@ def _sync_generator_to_session_templates(template_generator):
         try:
             template_json = json.dumps(template_content, indent=2)
             st.session_state[content_key] = template_json
-            print(f"Synced template {template_name} to session state")
         except Exception as e:
-            print(f"Warning: Could not sync template {template_name} to session state: {e}")
             continue
 
 
@@ -67,7 +65,7 @@ def _sync_session_templates_to_generator(template_generator):
             
         except (json.JSONDecodeError, KeyError) as e:
             # Skip invalid templates but don't break the export
-            print(f"Warning: Could not sync template {template_name}: {e}")
+            st.error(f"Warning: Could not sync template {template_name}: {e}")
             continue
 
 

@@ -23,9 +23,11 @@ from data_creation.sync_funcs import get_failed_count
 
 # API Endpoints
 INV_SEARCH_EP = '/dcinventory/api/dcinventory/inventory/inventorysearch'
+LIA_SEARCH_EP = '/dcinventory/api/dcinventory/locationItemAssignment/search'
 ITEM_SEARCH_EP = '/item-master/api/item-master/item/search'
 ITEM_BULK_EP = '/item-master/api/item-master/item/bulkImport'
 ADJUST_EP = '/dcinventory/api/dcinventory/inventory/adjustAbsoluteQuantity'
+CREATE_LIA_EP = '/dmui-facade/api/dmui-facade/view/action/com-manh-cp-dcinventory/LocationItemAssignment/AssignItemToLocation'
 LPN_CREATE_EP = '/dcinventory/api/dcinventory/ilpn/createIlpnAndInventory'
 ITEM_SYNC_EP = '/item-master/api/item-master/item/v2/sync'
 PALLETIZE_EP = '/dcinventory/api/dcinventory/ilpn/palletizeLpns'
@@ -42,7 +44,7 @@ def db_writer(db_queue, db_name, db_write_done):
         db_queue.task_done()
     db_write_done.set()
 
-def upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run, total_batches, endpoint):
+def upload_batch(to_url, to_headers, log_file, data, filter_value, batch_run, total_batches, endpoint):
     """Upload inventory batch function"""
     try:
         res = requests.post(to_url + endpoint, headers=to_headers, json=data)
@@ -58,6 +60,7 @@ def upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run
     except (requests.exceptions.SSLError, requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError):
         time.sleep(20)
         # Optionally, you could retry here or log a failure
+
 
 def palletize_lpns(to_url, to_headers, data, batch_run, total_batches, filter_value, log_file):
     """Palletize LPNs"""
@@ -92,6 +95,20 @@ def download_and_import_item_batch(from_url, from_headers, to_url, to_headers, l
         "response": res_save.json(),
     })
     return True
+
+def merge_lia_fields(inv_data, lia_data):
+    """Merge MaxUomQuantity and MinUomQuantity from LIA into inventory data by ItemId and LocationId."""
+    # Build a lookup for LIA data by (ItemId, LocationId)
+    lia_lookup = {(item['ItemId'], item['LocationId']): item for item in lia_data}
+    for inv_item in inv_data:
+        item_id = inv_item.get('ItemId')
+        location_id = inv_item.get('LocationId')
+        lia_item = lia_lookup.get((item_id, location_id))
+        if lia_item:
+            inv_item['MaxUomQuantity'] = lia_item.get('MaxUomQuantity') if lia_item.get('MaxUomQuantity') is not None else 0
+            inv_item['MinUomQuantity'] = lia_item.get('MinUomQuantity') if lia_item.get('MinUomQuantity') is not None else 0
+    return inv_data
+
 
 def request_failed(res, log_file):
     """Check if request failed and log error"""
@@ -259,7 +276,21 @@ def run_transfer_sync(config, log_file, progress_callback=None):
                 "env": res.request.url.split('/')[2],
                 "response": res.json(),
             })
-            db_queue.put((res.json()['data'], filter_type))  # Fixed: was using res.data and zone
+            item_list = [item['ItemId'] for item in res.json()['data']]
+            if inv_res_type == 'LOCATION':
+                lia_data = {
+                    "Query": f"ItemId in ('{'\',\''.join(item_list)}')",
+                    "Size": download_batch_size
+                }
+                lia_res = requests.post(from_url + LIA_SEARCH_EP, headers=from_headers, json=lia_data)
+                # Merge LIA data into inventory data by ItemId
+                res_data = res.json()['data']
+                lia_data_list = lia_res.json()['data']
+                # Merge the fields before writing to DB
+                merged_data = merge_lia_fields(res_data, lia_data_list)
+                db_queue.put((merged_data, filter_type))
+            else:
+                db_queue.put((res.json()['data'], filter_type))  # Fixed: was using res.data and zone
             
             progress_callback(f"Downloaded batch {i+1}/{number_of_batches}")
         
@@ -339,8 +370,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
             })
             return True
         else:
-            if progress_callback:
-                progress_callback("Preparing inventory adjustments...")
+            progress_callback("Preparing inventory adjustments...")
             
             conn = sqlite3.connect(db_name)
             df = pd.read_sql_query(f"select * from inventory_transfer_{filter_type}", conn)  # Fixed: was using filter_attribute
@@ -348,7 +378,32 @@ def run_transfer_sync(config, log_file, progress_callback=None):
             records = df.to_dict(orient='records')
 
             conn.close()
-            
+            if inv_res_type == 'LOCATION':
+                create_lia_template = {
+                    "ActionUrl": "/api/dcinventory/locationCapacityUsage/create",
+                    "InheritIsReplenishableFromLocation": True,
+                    "ItemId": "",
+                    "LocationId": "",
+                    "MaxUomQuantity": 100,
+                    "MinUomQuantity": 0,
+                }
+                out_lias = []
+                for rec in records:
+                    new_lia = deepcopy(create_lia_template)
+                    new_lia["ItemId"] = rec["ItemId"]
+                    new_lia["MaxUomQuantity"] = rec["MaxUomQuantity"]
+                    new_lia["MinUomQuantity"] = rec["MinUomQuantity"]
+                    new_lia["LocationId"] = rec["LocationId"]
+                    out_lias.append(new_lia)
+                total_adjustments = len(out_lias)
+                adjustment_batches = math.ceil(total_adjustments / upload_batch_size)
+                for i in range(adjustment_batches):
+                    current_start = i * upload_batch_size
+                    batch_end = min((i + 1) * upload_batch_size, total_adjustments)
+                    data = out_lias[current_start:batch_end]
+                    print(data)
+                    upload_batch(to_url, to_headers, log_file, data, filter_value, batch_run=i, total_batches=adjustment_batches, endpoint=CREATE_LIA_EP)
+                    progress_callback(f"Imported LIA batch {i+1} of {adjustment_batches}")            
             # Prepare inventory adjustment records
             if inv_res_type == 'LOCATION':
                 endpoint = ADJUST_EP
@@ -422,7 +477,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
                 current_start = i * upload_batch_size
                 batch_end = min((i + 1) * upload_batch_size, total_adjustments)
                 data = out_records[current_start:batch_end]
-                upload_inv_batch(to_url, to_headers, log_file, data, filter_value, batch_run=i, total_batches=adjustment_batches, endpoint=endpoint)
+                upload_batch(to_url, to_headers, log_file, data, filter_value, batch_run=i, total_batches=adjustment_batches, endpoint=endpoint)
                 progress_callback(f"Imported inventory batch {i+1} of {adjustment_batches}")
 
             if inventory_type == "Palletized":
@@ -518,7 +573,7 @@ def run_transfer_sync(config, log_file, progress_callback=None):
         #     while current_start < total_adjustments:
         #         batch_end = min(current_start + upload_batch_size, total_adjustments)
         #         data = out_records[current_start:batch_end]
-        #         futures.append(executor.submit(upload_inv_batch, to_url, to_headers, log_file, data, current_start, batch_end, filter_value))
+        #         futures.append(executor.submit(upload_batch, to_url, to_headers, log_file, data, current_start, batch_end, filter_value))
         #         current_start += upload_batch_size
         #     
         #     # Wait for all uploads to finish

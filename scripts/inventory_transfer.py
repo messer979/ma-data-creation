@@ -24,6 +24,9 @@ def write_inv(db_name, table_name: str, response: List[Dict]):
     conn = sqlite3.connect(db_name)
     try:
         df = pd.DataFrame(response)
+        for col in ['MinUomQuantity', 'MaxUomQuantity']:
+            if col in df.columns:
+                df[col] = df[col].fillna(0)
         # df = df.filter(["OnHand", "LocationId", "ItemId"])
         df['Extended'] = df['Extended'].apply(json.dumps)
         df.drop(columns=['ItemExtended', 'InventoryConditionCodeList', 'IlpnConditionCodeList', 'IlpnLabels'], 

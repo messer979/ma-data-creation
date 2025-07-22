@@ -69,7 +69,6 @@ if 'form_inventory_type' not in st.session_state:
 def get_log_file():
     uuid_val = st.session_state.get('transfer_log_uuid')
     if uuid_val:
-        print(f'log exists transfer_status_{uuid_val}')
         return f"transfer_status_{uuid_val}.json"
     return None
 
@@ -191,7 +190,6 @@ with st.form("inventory_config", enter_to_submit=False):
             index=0,
             help="Select the type of inventory to transfer"
         )
-        print(f"Selected attribute type: {attribute_type}, value: {attribute_value}")
 
     
     with col4:
@@ -258,7 +256,6 @@ if st.session_state.get('submitted', False):
         f'{attribute_type.title()}': attribute_value}
     missing_fields = [name for name, value in required_fields.items() if not value]
     
-    print('Missing fields:', missing_fields)
     if len(missing_fields) > 0:
         st.error(f"❌ Please fill in all required fields: {', '.join(missing_fields)}")
     else:
@@ -275,7 +272,6 @@ if st.session_state.get('submitted', False):
         
         # Generate a new UUID for this transfer and store in session_state
         transfer_uuid = str(uuid.uuid4())
-        print(f"Starting transfer with UUID: {transfer_uuid}")
         st.session_state['transfer_log_uuid'] = transfer_uuid
         log_file = f"transfer_status_{transfer_uuid}.json"
         config = {

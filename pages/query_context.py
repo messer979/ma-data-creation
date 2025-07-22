@@ -14,83 +14,9 @@ from streamlit_ace import st_ace
 
 from components.sidebar import render_sidebar
 from components.wiretap import query_execution_wrapper
-
-
-def format_sql_query(sql_query: str) -> str:
-    """
-    Format SQL query for better readability
-    Simple SQL formatter that adds proper indentation and line breaks
-    
-    Args:
-        sql_query: Raw SQL query string
-        
-    Returns:
-        Formatted SQL query string
-    """
-    if not sql_query.strip():
-        return sql_query
-    
-    # Basic SQL formatting rules
-    keywords = [
-        'SELECT', 'FROM', 'WHERE', 'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 
-        'GROUP BY', 'ORDER BY', 'HAVING', 'UNION', 'INSERT', 'UPDATE', 'DELETE',
-        'AND', 'OR', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'ON'
-    ]
-    
-    # Remove extra whitespace and normalize
-    formatted = ' '.join(sql_query.split())
-    
-    # Add line breaks before major keywords
-    major_keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'HAVING', 'UNION']
-    for keyword in major_keywords:
-        formatted = formatted.replace(f' {keyword} ', f'\n{keyword} ')
-        formatted = formatted.replace(f' {keyword.lower()} ', f'\n{keyword} ')
-    
-    # Add line breaks before JOIN clauses
-    join_keywords = ['JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN']
-    for join in join_keywords:
-        formatted = formatted.replace(f' {join} ', f'\n{join} ')
-        formatted = formatted.replace(f' {join.lower()} ', f'\n{join} ')
-    
-    # Add line breaks before AND/OR in WHERE clauses
-    formatted = formatted.replace(' AND ', '\n  AND ')
-    formatted = formatted.replace(' and ', '\n  AND ')
-    formatted = formatted.replace(' OR ', '\n  OR ')
-    formatted = formatted.replace(' or ', '\n  OR ')
-    
-    # Add line breaks for CASE statements
-    formatted = formatted.replace(' CASE ', '\n  CASE ')
-    formatted = formatted.replace(' case ', '\n  CASE ')
-    formatted = formatted.replace(' WHEN ', '\n    WHEN ')
-    formatted = formatted.replace(' when ', '\n    WHEN ')
-    formatted = formatted.replace(' THEN ', ' THEN ')
-    formatted = formatted.replace(' then ', ' THEN ')
-    formatted = formatted.replace(' ELSE ', '\n    ELSE ')
-    formatted = formatted.replace(' else ', '\n    ELSE ')
-    formatted = formatted.replace(' END', '\n  END')
-    formatted = formatted.replace(' end', '\n  END')
-    
-    # Clean up extra newlines and add proper indentation
-    lines = formatted.split('\n')
-    cleaned_lines = []
-    
-    for line in lines:
-        line = line.strip()
-        if line:
-            # Add indentation based on keywords
-            if line.startswith(('AND', 'OR', 'WHEN', 'ELSE')):
-                cleaned_lines.append('  ' + line)
-            elif line.startswith('THEN'):
-                cleaned_lines.append('    ' + line)
-            elif line.startswith(('JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN')):
-                cleaned_lines.append('  ' + line)
-            else:
-                cleaned_lines.append(line)
-    
-    return '\n'.join(cleaned_lines).strip()
-
-
-        
+from app import preload
+from config import load_initial_config_to_session
+     
     
 
 def store_query_result_as_dataframe(query_result: pd.DataFrame, query_name: str) -> bool:
@@ -142,7 +68,7 @@ def render_query_interface():
     # Query name input
     query_name = st.text_input(
         "Query Name",
-        value="",
+        value="items",
         placeholder="Enter a name for this query (e.g., 'active_facilities', 'available_items')",
         help="Give this query a meaningful name to reference it in templates"
     )
@@ -382,6 +308,8 @@ def main():
         page_icon="🔍",
         layout="wide"
     )
+    if not st.session_state.get('config_loaded', False):
+        load_initial_config_to_session()
     
     # Render sidebar
     render_sidebar()
