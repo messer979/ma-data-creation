@@ -14,7 +14,6 @@ from streamlit_ace import st_ace
 
 from components.sidebar import render_sidebar
 from components.wiretap import query_execution_wrapper
-from app import preload
 from config import load_initial_config_to_session
      
     
