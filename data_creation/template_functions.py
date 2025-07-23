@@ -544,13 +544,13 @@ def create_record_from_template(base_template: Dict[str, Any],
     if 'RandomFields' in generation_template:
         record = apply_random_fields_with_arrays(record, generation_template['RandomFields'], array_lengths, unique_context)
     
+    # Apply query context fields if available (applied before linked fields so linked fields can reference query values)
+    if 'QueryContextFields' in generation_template and QUERY_CONTEXT_AVAILABLE:
+        record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths)
+    
     # Apply linked fields with array handling
     if 'LinkedFields' in generation_template:
         record = apply_linked_fields_with_arrays(record, generation_template['LinkedFields'], array_lengths)
-    
-    # Apply query context fields if available (new feature)
-    if 'QueryContextFields' in generation_template and QUERY_CONTEXT_AVAILABLE:
-        record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths)
     
     return record
 
