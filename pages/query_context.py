@@ -322,7 +322,6 @@ def main():
     
     with tab1:
         render_query_interface()
-        st.json(st.session_state)
     
     with tab2:
         render_stored_queries()
