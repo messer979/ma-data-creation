@@ -9,3 +9,5 @@ redis
 flask
 faker
 python-dotenv
+termcolor
+colorama
