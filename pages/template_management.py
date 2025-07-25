@@ -15,6 +15,7 @@ from components.sidebar import render_sidebar
 from templates.session_base_template_manager import SessionBaseTemplateManager
 from templates.bulk_template_manager import BulkTemplateManager
 from data_creation.template_generator import TemplateGenerator
+from data_creation.dev_config import is_dev_mode, get_dev_templates
 
 
 def _sync_generator_to_session_templates(template_generator):
@@ -75,10 +76,58 @@ def get_session_template_manager():
     return SessionBaseTemplateManager()
 
 
-
-# Get template manager instance
-template_manager = get_session_template_manager()
-template_generator = TemplateGenerator()
+def load_dev_templates_if_dev_mode():
+    """
+    Load templates from dev_gen_templates.json if in dev mode
+    These will be merged with the session-based templates
+    """
+    if not is_dev_mode():
+        return
+    
+    # Only load once per session to avoid overriding user changes
+    if st.session_state.get('dev_templates_loaded_to_manager', False):
+        return
+    
+    dev_templates = get_dev_templates()
+    if not dev_templates:
+        return
+    
+    try:
+        # Get template manager instance (initialize if needed)
+        template_manager = SessionBaseTemplateManager()
+        
+        # Save each template to the session-based manager
+        for template_name, template_content in dev_templates.items():
+            template_manager.save_template(template_name, template_content)
+            
+        # Also add templates to the generation templates session state
+        for template_name, template_content in dev_templates.items():
+            # Create session state key for generation templates
+            if 'session_generation_templates' not in st.session_state:
+                st.session_state['session_generation_templates'] = {}
+            
+            # Add template to generation templates
+            st.session_state['session_generation_templates'][template_name] = template_content
+            
+            # Create content key for editor
+            content_key = f"template_content_{template_name}"
+            
+            # Convert template content to JSON string for editor
+            try:
+                template_json = json.dumps(template_content, indent=2)
+                st.session_state[content_key] = template_json
+            except Exception as e:
+                continue
+            
+        # Mark as loaded to prevent re-loading
+        st.session_state['dev_templates_loaded_to_manager'] = True
+        
+        # Show a subtle notification
+        if dev_templates:
+            st.sidebar.info(f"🔧 Dev mode: Loaded {len(dev_templates)} templates from JSON file")
+            
+    except Exception as e:
+        st.sidebar.error(f"Error loading dev templates: {e}")
 
 # Main UI
 st.set_page_config(
@@ -87,6 +136,14 @@ st.set_page_config(
     layout="wide"
 )
 st.title("🗂️ Template Management")
+
+# Get template manager instance
+template_manager = get_session_template_manager()
+template_generator = TemplateGenerator()
+
+# Load templates from dev config if in dev mode
+load_dev_templates_if_dev_mode()
+
 
 # Sidebar navigation
 render_sidebar()

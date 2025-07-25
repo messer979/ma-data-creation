@@ -26,7 +26,10 @@ def main():
     
     st.title("🔧 Endpoint Management")
     st.markdown("Configure API endpoints, authentication, and payload settings for your data generation templates.")
-        # Ensure session state config exists
+    
+    # Load .env configuration if dev mode is active
+    
+    # Ensure session state config exists
     if not st.session_state.get('config_loaded', False):
         load_initial_config_to_session()
     # Create two columns for better layout

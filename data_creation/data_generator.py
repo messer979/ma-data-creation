@@ -2,8 +2,17 @@ import os
 import json
 import requests
 import streamlit as st
+from colorama import Fore, Back, Style, init, just_fix_windows_console
+
+from termcolor import colored
+
 from data_creation.template_generator import TemplateGenerator
 from templates.session_base_template_manager import SessionBaseTemplateManager
+
+# Initialize colorama
+init(autoreset=True)
+just_fix_windows_console()
+
 
 DEFAULT_API_ENDPOINT = 'https://api.example.com/data'  # Replace with actual endpoint
 DEFAULT_API_HEADERS = {
@@ -80,12 +89,8 @@ class DataGenerator:
             
             # Apply payload wrapping logic based on template configuration
             payload = self._wrap_payload(data, template_config)
-            
             response = requests.post(url, json=payload, headers=request_headers, timeout=30)
-            # print(response.request.body)
-            # print('\n')
-            # print(response.headers)
-            # print(response.json())
+
             response.raise_for_status()
 
             return {
@@ -93,13 +98,22 @@ class DataGenerator:
                 'status_code': response.status_code,
                 'response': response.json() if response.content else {},
                 'response_headers': dict(response.headers),
-                'response_time': response.elapsed.total_seconds()
+                'response_time': response.elapsed.total_seconds(),
+                'request_body': payload
             }
         except requests.exceptions.RequestException as e:
+            try:
+                response_payload = e.response.json() 
+            except requests.exceptions.JSONDecodeError:
+                response_payload = e.response.text
             return {
                 'success': False,
                 'error': str(e),
-                'status_code': getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
+                'status_code': getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None,
+                'response_headers': dict(e.response.headers),
+                'response': response_payload,
+                'response_time': e.response.elapsed.total_seconds(),
+                'request_body': payload
             }
     
     def _wrap_payload(self, data, template_config):
@@ -122,13 +136,13 @@ class DataGenerator:
         # Apply wrapping logic based on configuration
         if payload_type == 'xint' and data_wrapper:
             # Both xint and dataWrapper: {"Payload": {"data": [records]}}
-            return {"Payload": {"data": data}}
+            return {"Payload": {"Data": data}}
         elif payload_type == 'xint':
             # Only xint: {"Payload": [records]}
             return {"Payload": data}
         elif data_wrapper:
             # Only dataWrapper: {"data": [records]}
-            return {"data": data}
+            return {"Data": data}
         else:
             # No wrapping: [records]
             return data
