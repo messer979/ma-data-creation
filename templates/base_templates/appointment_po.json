@@ -38,8 +38,6 @@
         "AppointmentContact": [
         ],
         "TractorId": null,
-        "OrgId": "MA-DEV-L2",
-        "FacilityId": "MA-DEV-L2",
         "AppointmentContents": [
             {
                 "Appointment": {},
@@ -50,8 +48,6 @@
                 "QuantityUomId": null,
                 "ProNumber": null,
                 "EntityLabels": null,
-                "OrgId": "MA-DEV-L2",
-                "FacilityId": "MA-DEV-L2",
                 "SupplierPurchaseOrderIndicator": false,
                 "PurchaseOrderId": {
                     "PurchaseOrderId": "CM_PO1_0715_006"

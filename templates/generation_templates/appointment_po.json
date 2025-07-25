@@ -14,7 +14,7 @@
         "Resources.ResourceName": "Resource Unit 1"
     },
     "SequenceFields": {
-        "AppointmentId": "APT-{{dttm}}-"
+        "AppointmentId": "APT_{{dttm}}"
     },
     "ArrayLengths": {
         "Resources": 1,
@@ -24,15 +24,15 @@
     "RandomFields": [
         {
             "FieldName": "PreferredDateTime",
-            "FieldType": "datetime(future)"
+            "FieldType": "datetime(7)"
         },
         {
             "FieldName": "ArrivalDateTime",
-            "FieldType": "datetime(future)"
+            "FieldType": "datetime(7)"
         },
         {
             "FieldName": "EstimatedArrivalDateTime",
-            "FieldType": "datetime(future)"
+            "FieldType": "datetime(7)"
         },
         {
             "FieldName": "VendorId",

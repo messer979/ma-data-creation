@@ -23,9 +23,9 @@
     "Resources.ResourceName": "Drop Unload"
   },
   "SequenceFields": {
-    "AppointmentId": "APT-{{dttm}}-",
-    "Shipment.ShipmentId": "SHP-{{dttm}}-",
-    "Shipment.StopId": "STP-{{dttm}}-"
+    "AppointmentId": "APT_{{dttm}}",
+    "Shipment.ShipmentId": "SHP_{{dttm}}",
+    "Shipment.StopId": "STP_{{dttm}}"
   },
   "ArrayLengths": {
     "Shipment": 1,
