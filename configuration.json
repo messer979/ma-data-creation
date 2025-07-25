@@ -37,6 +37,20 @@
       "dataWrapper":true,
       "description": "Purchase Order data endpoint"
     },
+    "appointment_po": {
+      "endpoint": "/appointment/api/appointment/importAppointmentAllActions",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Appointment Purchase Order data endpoint"
+    },
+    "appointment_shipment": {
+      "endpoint": "/appointment/api/appointment/importAppointmentAllActions",
+      "method": "POST",
+      "type":"xint",
+      "dataWrapper":true,
+      "description": "Appointment Shipment data endpoint"
+    },
     "asn_item_level": {
       "endpoint": "/xint/api/async/outbound/send?messageType=ANY_RCV_ImportAsn",
       "method": "POST",

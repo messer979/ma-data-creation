@@ -69,3 +69,6 @@ test_outputs/
 # Temporary files
 *.tmp
 *.temp
+
+# Dev jsons
+dev_*
