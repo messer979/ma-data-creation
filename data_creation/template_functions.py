@@ -13,42 +13,15 @@ from typing import Dict, Any, List, Optional
 from copy import deepcopy
 
 # Import query context utilities for template generation
-try:
-    from data_creation.query_context_utils import (
-        get_query_dataframe, 
-        sample_from_query, 
-        get_random_value_from_column,
-        get_unique_column_values,
-        filter_query_data,
-        query_exists
-    )
-    QUERY_CONTEXT_AVAILABLE = True
-except ImportError:
-    QUERY_CONTEXT_AVAILABLE = False
+from data_creation.query_context_utils import (
+    get_query_dataframe, 
+    sample_from_query, 
+    get_random_value_from_column,
+    get_unique_column_values,
+    filter_query_data,
+    query_exists
+)
 
-
-def get_query_context_globals() -> Dict[str, Any]:
-    """
-    Get global variables for query context that can be used in template generation
-    
-    Returns:
-        Dictionary of global variables including query utility functions
-    """
-    if not QUERY_CONTEXT_AVAILABLE:
-        return {}
-    
-    return {
-        'get_query_dataframe': get_query_dataframe,
-        'sample_from_query': sample_from_query,
-        'get_random_value_from_column': get_random_value_from_column,
-        'get_unique_column_values': get_unique_column_values,
-        'filter_query_data': filter_query_data,
-        'query_exists': query_exists,
-        # Add some convenience functions
-        'random_facility': lambda: get_random_value_from_column('facilities', 'facility_id') if query_exists('facilities') else None,
-        'random_item': lambda: get_random_value_from_column('items', 'item_id') if query_exists('items') else None,
-        'random_vendor': lambda: get_random_value_from_column('vendors', 'vendor_id') if query_exists('vendors') else None,
-    }
 
 
 def apply_static_fields(record: Dict[str, Any], static_fields: Dict[str, Any]) -> Dict[str, Any]:
@@ -504,7 +477,7 @@ def create_record_from_template(base_template: Dict[str, Any],
     """    
     # Start with a deep copy of the base template
     record = deep_copy_template(base_template)
-    
+    # print(record.keys())
     # Initialize unique context for choiceUnique fields
     unique_context = {}
       # Get array lengths configuration
@@ -545,13 +518,14 @@ def create_record_from_template(base_template: Dict[str, Any],
         record = apply_random_fields_with_arrays(record, generation_template['RandomFields'], array_lengths, unique_context)
     
     # Apply query context fields if available (applied before linked fields so linked fields can reference query values)
-    if 'QueryContextFields' in generation_template and QUERY_CONTEXT_AVAILABLE:
+    if 'QueryContextFields' in generation_template:
         record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths)
     
     # Apply linked fields with array handling
     if 'LinkedFields' in generation_template:
         record = apply_linked_fields_with_arrays(record, generation_template['LinkedFields'], array_lengths)
     
+    # print("Generated record:", json.dumps(record, indent=2))
     return record
 
 
@@ -1396,8 +1370,6 @@ def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spe
         field_name: Name of the field to set
         query_spec: Query specification with 'query', 'column', and optional 'mode', 'template_key', 'query_key'
     """
-    if not QUERY_CONTEXT_AVAILABLE:
-        return
     
     try:
         query_name = query_spec.get('query')

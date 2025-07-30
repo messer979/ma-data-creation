@@ -35,7 +35,7 @@ def store_query_result_as_dataframe(query_result: pd.DataFrame, query_name: str)
         # Store in session state under a specific key structure
         if 'query_dataframes' not in st.session_state:
             st.session_state['query_dataframes'] = {}
-            
+        print(f"Storing query result '{query_name}' with {len(df)} rows")
         st.session_state['query_dataframes'][query_name] = {
             'dataframe': df,
             'created_at': datetime.now(),
