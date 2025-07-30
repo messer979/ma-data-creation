@@ -3,15 +3,14 @@ import json
 import requests
 import streamlit as st
 from colorama import Fore, Back, Style, init, just_fix_windows_console
-
 from termcolor import colored
+# Initialize colorama
+init(autoreset=True)
+just_fix_windows_console()
 
 from data_creation.template_generator import TemplateGenerator
 from templates.session_base_template_manager import SessionBaseTemplateManager
 
-# Initialize colorama
-init(autoreset=True)
-just_fix_windows_console()
 
 
 DEFAULT_API_ENDPOINT = 'https://api.example.com/data'  # Replace with actual endpoint
