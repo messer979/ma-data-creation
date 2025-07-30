@@ -25,7 +25,7 @@ from components.sidebar import render_sidebar
 from data_creation.data_operations import handle_generate_button_click
 import json
 from dotenv import load_dotenv
-from data_creation.dev_config import is_dev_mode, get_dev_templates, load_env_config_if_dev_mode, load_dev_templates_to_generator
+from data_creation.dev_config import load_dev_endpoints, load_dev_gen_templates
 
 
 def _sync_generator_to_session_templates(template_generator):
@@ -64,8 +64,8 @@ load_initial_config_to_session()
 
 
 # Load dev templates if in dev mode
-load_dev_templates_to_generator()
-load_env_config_if_dev_mode()
+load_dev_gen_templates()
+load_dev_endpoints()
 
 def main():
     """Main Streamlit application with separated concerns"""
@@ -115,8 +115,8 @@ def main():
                 template_editor_result=template_editor_result
             )
             
-            # if success:
-            #     st.rerun()  # Refresh to show results
+            if success:
+                st.rerun()  # Refresh to show results
     
     with col2:
         if st.button("🗑️ Clear Results", help="Clear all generated data and API results"):
@@ -139,7 +139,7 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown("Built with Streamlit • Modular Architecture • Template-Specific Endpoints")
-
+    # st.json(st.session_state)
 
 if __name__ == "__main__":
     main()

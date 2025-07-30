@@ -71,4 +71,4 @@ test_outputs/
 *.temp
 
 # Dev jsons
-dev_*
+dev_*.json
