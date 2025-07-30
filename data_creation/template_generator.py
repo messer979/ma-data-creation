@@ -10,6 +10,11 @@ import glob
 import streamlit as st
 from typing import Dict, Any, List, Optional
 from data_creation.template_functions import create_record_from_template
+from colorama import Fore, Back, Style, init, just_fix_windows_console
+from termcolor import colored
+# Initialize colorama
+init(autoreset=True)
+just_fix_windows_console()
 
 
 class TemplateGenerator:
@@ -83,7 +88,6 @@ class TemplateGenerator:
         
         # Track sequence field counters across all records
         sequence_counters = {}
-        
         for i in range(count):
             record = create_record_from_template(
                 base_template,
