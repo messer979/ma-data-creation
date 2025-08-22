@@ -15,28 +15,13 @@
     "ArrayLengths": {
         "PurchaseOrderLine": 2
     },
-    "RandomFields": [
-        {
-            "FieldName": "VendorId",
-            "FieldType": "choice(vendor1,vendor2,vendor3,vendor4)"
-        },
-        {
-            "FieldName": "PurchaseOrderLine.ItemId",
-            "FieldType": "choice(item1,item2,item3,item4)"
-        },
-        {
-            "FieldName": "PurchaseOrderLine.PurchaseOrderLineId",
-            "FieldType": "uuid"
-        },
-        {
-            "FieldName": "PurchaseOrderLine.OrderQuantity",
-            "FieldType": "int(10,500)"
-        },
-        {
-            "FieldName": "PurchaseOrderLine.ShippedQuantity",
-            "FieldType": "int(10,500)"
-        }
-    ],
+    "RandomFields": {
+        "VendorId": "choice(vendor1,vendor2,vendor3,vendor4)",
+        "PurchaseOrderLine.ItemId": "choice(item1,item2,item3,item4)",
+        "PurchaseOrderLine.PurchaseOrderLineId": "uuid",
+        "PurchaseOrderLine.OrderQuantity": "int(10,500)",
+        "PurchaseOrderLine.ShippedQuantity": "int(10,500)"
+    },
     "LinkedFields": {
         "PurchaseOrderId": [
             "PurchaseOrderLine.PurchaseOrderId"

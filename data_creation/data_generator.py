@@ -1,5 +1,6 @@
 import os
 import json
+import traceback
 import requests
 import streamlit as st
 from colorama import Fore, Back, Style, init, just_fix_windows_console
@@ -101,6 +102,7 @@ class DataGenerator:
                 'request_body': payload
             }
         except requests.exceptions.RequestException as e:
+            traceback.print_exc()
             try:
                 response_payload = e.response.json() 
             except requests.exceptions.JSONDecodeError:

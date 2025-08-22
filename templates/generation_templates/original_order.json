@@ -20,64 +20,22 @@
   "SequenceFields": {
     "OriginalOrderId": "CM_ORDER"
   },
-  "RandomFields": [
-    {
-      "FieldName": "CustomerId",
-      "FieldType": "string(10)"
-    },
-    {
-      "FieldName": "OrderPlacedDateTime",
-      "FieldType": "datetime(now)"
-    },
-    {
-      "FieldName": "PickupStartDateTime",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "PickupEndDateTime",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "DeliveryStartDateTime",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "DeliveryEndDateTime",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "DestinationAddress.FirstName",
-      "FieldType": "choice(John,Jane,Michael,Sarah,David,Lisa,Robert,Emily,James,Maria)"
-    },
-    {
-      "FieldName": "DestinationAddress.LastName",
-      "FieldType": "choice(Smith,Johnson,Williams,Brown,Jones,Garcia,Miller,Davis,Rodriguez,Martinez)"
-    },
-    {
-      "FieldName": "DestinationAddress.Address1",
-      "FieldType": "string(25)"
-    },
-    {
-      "FieldName": "DestinationAddress.City",
-      "FieldType": "choice(Atlanta,New York,Chicago,Los Angeles,Dallas,Phoenix,Philadelphia,Houston,San Antonio,San Diego)"
-    },
-    {
-      "FieldName": "DestinationAddress.State",
-      "FieldType": "choice(GA,NY,IL,CA,TX,AZ,PA,FL,OH,MI)"
-    },
-    {
-      "FieldName": "DestinationAddress.PostalCode",
-      "FieldType": "int(5)"
-    },
-    {
-      "FieldName": "DestinationAddress.Email",
-      "FieldType": "email"
-    },
-    {
-      "FieldName": "OriginalOrderLine.ItemId",
-      "FieldType": "choiceUnique(KRITEM_001,KRITEM_002,KRIT)"
-    }
-  ],
+  "RandomFields": {
+    "CustomerId": "string(10)",
+    "OrderPlacedDateTime": "datetime(now)",
+    "PickupStartDateTime": "datetime(future)",
+    "PickupEndDateTime": "datetime(future)",
+    "DeliveryStartDateTime": "datetime(future)",
+    "DeliveryEndDateTime": "datetime(future)",
+    "DestinationAddress.FirstName": "choice(John,Jane,Michael,Sarah,David,Lisa,Robert,Emily,James,Maria)",
+    "DestinationAddress.LastName": "choice(Smith,Johnson,Williams,Brown,Jones,Garcia,Miller,Davis,Rodriguez,Martinez)",
+    "DestinationAddress.Address1": "string(25)",
+    "DestinationAddress.City": "choice(Atlanta,New York,Chicago,Los Angeles,Dallas,Phoenix,Philadelphia,Houston,San Antonio,San Diego)",
+    "DestinationAddress.State": "choice(GA,NY,IL,CA,TX,AZ,PA,FL,OH,MI)",
+    "DestinationAddress.PostalCode": "int(5)",
+    "DestinationAddress.Email": "email",
+    "OriginalOrderLine.ItemId": "choiceUnique(KRITEM_001,KRITEM_002,KRIT)"
+  },
   "LinkedFields": {},
   "QueryContextFields": {}
 }

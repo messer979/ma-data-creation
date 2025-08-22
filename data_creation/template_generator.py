@@ -9,6 +9,8 @@ import os
 import glob
 import streamlit as st
 from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+
 from data_creation.template_functions import create_record_from_template
 from colorama import Fore, Back, Style, init, just_fix_windows_console
 from termcolor import colored
@@ -80,9 +82,12 @@ class TemplateGenerator:
         Returns:
             List of generated records
         """
+        generation_time = datetime.now()
         if template_name not in self.generation_templates:
             raise ValueError(f"Generation template '{template_name}' not found")
-        
+        global_config = {
+            "generation_time": generation_time
+        }
         generation_template = self.generation_templates[template_name]
         records = []
         
@@ -93,7 +98,8 @@ class TemplateGenerator:
                 base_template,
                 generation_template,
                 i,
-                sequence_counters
+                sequence_counters,
+                global_config
             )
             records.append(record)
         

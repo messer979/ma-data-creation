@@ -19,7 +19,7 @@ from components.app_components import (
     render_count_input,
     render_api_options,
     render_results_panel,
-    render_template_editor
+    render_editor
 )
 from components.sidebar import render_sidebar
 from data_creation.data_operations import handle_generate_button_click
@@ -83,10 +83,7 @@ def main():
         return  # Exit if no templates available
     
     # Generation Template Editor
-    template_editor_result = render_template_editor(
-        st.session_state.data_gen,
-        selected_template
-    )
+    template_editor_result = render_editor(selected_template)
     
     st.markdown("---")
     
@@ -116,6 +113,7 @@ def main():
             )
             
             if success:
+                # History is saved within handle_generate_button_click before this point
                 st.rerun()  # Refresh to show results
     
     with col2:
