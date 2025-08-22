@@ -8,20 +8,11 @@
     },
     "SequenceFields": {},
     "ArrayLengths": {},
-    "RandomFields": [
-        {
-            "FieldName": "SourceContainerId",
-            "FieldType": "choice(location1,location2,location3,location4)"
-        },
-        {
-            "FieldName": "ItemId",
-            "FieldType": "choice(item1,item2,item3,item4)"
-        },
-        {
-            "FieldName": "Quantity",
-            "FieldType": "int(10,100)"
-        }
-    ],
+    "RandomFields": {
+        "SourceContainerId": "choice(location1,location2,location3,location4)",
+        "ItemId": "choice(item1,item2,item3,item4)",
+        "Quantity": "int(10,100)"
+    },
     "LinkedFields": {
         "SourceContainerId": [
             "SourceLocationId"]

@@ -32,20 +32,11 @@
     "AppointmentContents": 1,
     "Resources": 1
   },
-  "RandomFields": [
-    {
-      "FieldName": "PreferredDateTime",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "ArrivalDateTime",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "ScheduledDateTime", 
-      "FieldType": "datetime(future)"
-    }
-  ],
+  "RandomFields": {
+    "PreferredDateTime": "datetime(future)",
+    "ArrivalDateTime": "datetime(future)",
+    "ScheduledDateTime": "datetime(future)"
+  },
   "LinkedFields": {
     "Shipment.ShipmentId": [
       "AppointmentContents.ShipmentId.ShipmentId"

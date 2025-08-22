@@ -8,13 +8,50 @@ import streamlit as st
 import pandas as pd
 import json
 import requests
-from typing import Dict, Any, Optional
+import os
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from streamlit_ace import st_ace
+import time 
 
 from components.sidebar import render_sidebar
 from components.wiretap import query_execution_wrapper
 from config import load_initial_config_to_session
+
+
+def load_dev_query_context() -> Dict[str, Any]:
+    """
+    Load queries from dev_query_context.json if it exists
+    
+    Returns:
+        Dictionary containing queries or empty dict if file doesn't exist
+    """
+    try:
+        dev_query_file = "dev_query_context.json"
+        if os.path.exists(dev_query_file):
+            with open(dev_query_file, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        st.warning(f"Error loading dev_query_context.json: {str(e)}")
+        return {}
+
+
+def get_query_by_name(query_name: str, dev_queries: List[Dict]) -> Optional[str]:
+    """
+    Get a specific query by name from the dev queries
+    
+    Args:
+        query_name: Name of the query to find
+        dev_queries: List of query dictionaries from dev_query_context.json
+        
+    Returns:
+        SQL query string if found, None otherwise
+    """
+    for query in dev_queries:
+        if query.get("name") == query_name:
+            return query.get("query")
+    return None
      
     
 
@@ -61,38 +98,45 @@ def render_query_interface():
         st.warning("⚠️ Base URL not configured. Please configure your base URL in the sidebar.")
         return
     
+    # Load dev queries
+    dev_query_context = load_dev_query_context()
+    if dev_query_context != {}:
+        st.session_state['selected_query_name'] = dev_query_context['name']
+        st.session_state['formatted_sql_value'] = dev_query_context['query']
+
     # Query input section
     st.subheader("📝 SQL Query")
+
+    if 'formatted_sql_value' not in st.session_state:
+        st.session_state['formatted_sql_value'] = "SELECT ii.ITEM_ID, ii.PROFILE_ID, ip.STANDARD, MAX(CASE WHEN ip.UOM_ID = 'units' THEN ip.QUANTITY END) AS UNITS_QUANTITY, MAX(CASE WHEN ip.UOM_ID = 'packs' THEN ip.QUANTITY END) AS PACKS_QUANTITY FROM default_item_master.ITE_ITEM ii INNER JOIN default_item_master.ITE_ITEM_PACKAGE ip ON ip.ITEM_PK = ii.PK AND ip.STANDARD = 1 GROUP BY ii.ITEM_ID limit 1000"
     
+    # Show available dev queries if they exist
+
     # Query name input
+    default_name = st.session_state.get('selected_query_name', 'items')
     query_name = st.text_input(
         "Query Name",
-        value="items",
+        value=default_name,
         placeholder="Enter a name for this query (e.g., 'active_facilities', 'available_items')",
         help="Give this query a meaningful name to reference it in templates"
     )
     
-    # Get the current SQL value (either formatted or original)
-    current_sql_value = st.session_state.get('formatted_sql_value', "SELECT ii.ITEM_ID, ii.PROFILE_ID, ip.STANDARD, MAX(CASE WHEN ip.UOM_ID = 'units' THEN ip.QUANTITY END) AS UNITS_QUANTITY, MAX(CASE WHEN ip.UOM_ID = 'packs' THEN ip.QUANTITY END) AS PACKS_QUANTITY FROM default_item_master.ITE_ITEM ii INNER JOIN default_item_master.ITE_ITEM_PACKAGE ip ON ip.ITEM_PK = ii.PK AND ip.STANDARD = 1 GROUP BY ii.ITEM_ID limit 1000")
-    
     # SQL Query text area
+    current_sql_value = st.session_state['formatted_sql_value']
     sql_query = st_ace(
         value=current_sql_value,
         language='sql',
         theme=st.session_state.get('ace_theme', 'github'),
-        key="sql_query_editor",
         height=200,
         auto_update=False,
         wrap=True,
         annotations=None,
         placeholder="Enter your SQL query here...",
         show_gutter=True,
+        
         show_print_margin=True
-    )    
-    # Update the current SQL value if user has typed in the editor
-    if sql_query != current_sql_value:
-        st.session_state['formatted_sql_value'] = sql_query
-            
+    )
+
     # Execute button
     col1, col2, col3 = st.columns([2, 2, 6])
     organization = st.text_input(
@@ -201,6 +245,17 @@ def render_template_integration_guide():
     st.subheader("🔗 Using Query Results in Templates")
     
     query_dataframes = st.session_state.get('query_dataframes', {})
+    dev_query_context = load_dev_query_context()
+    dev_queries = dev_query_context.get("queries", [])
+    
+    # Show information about dev queries if they exist
+    if dev_queries:
+        with st.expander("📋 Predefined Queries (dev_query_context.json)", expanded=False):
+            st.markdown("The following queries are available from `dev_query_context.json`:")
+            for query in dev_queries:
+                st.markdown(f"**{query['name']}**")
+                st.code(query['query'], language='sql')
+                st.markdown("---")
     
     if not query_dataframes:
         st.info("Execute queries above to see integration examples.")

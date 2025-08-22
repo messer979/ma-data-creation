@@ -23,44 +23,17 @@
         "Lpn.LpnDetail": 1,
         "ShipmentAsnAssociation": 1
     },
-    "RandomFields": [
-        {
-            "FieldName": "EstimatedWeight",
-            "FieldType": "float(1,50,2)"
-        },
-        {
-            "FieldName": "PreDeterminedLpnCount",
-            "FieldType": "int(10,200)"
-        },
-        {
-            "FieldName": "EstimatedVolume",
-            "FieldType": "float(0.1,10,2)"
-        },
-        {
-            "FieldName": "EstimatedReceiptDate",
-            "FieldType": "datetime(future)"
-        },
-        {
-            "FieldName": "EstimatedDeliveryDate",
-            "FieldType": "datetime(future)"
-        },
-        {
-            "FieldName": "ShipmentAsnAssociation.ShipmentId",
-            "FieldType": "string(10)"
-        },
-        {
-            "FieldName": "Lpn.LpnDetail.LpnDetailId",
-            "FieldType": "uuid"
-        },
-        {
-            "FieldName": "Lpn.LpnDetail.ItemId",
-            "FieldType": "string(12)"
-        },
-        {
-            "FieldName": "Lpn.LpnDetail.ShippedQuantity",
-            "FieldType": "int(10,500)"
-        }
-    ],
+    "RandomFields": {
+        "EstimatedWeight": "float(1,50,2)",
+        "PreDeterminedLpnCount": "int(10,200)",
+        "EstimatedVolume": "float(0.1,10,2)",
+        "EstimatedReceiptDate": "datetime(future)",
+        "EstimatedDeliveryDate": "datetime(future)",
+        "ShipmentAsnAssociation.ShipmentId": "string(10)",
+        "Lpn.LpnDetail.LpnDetailId": "uuid",
+        "Lpn.LpnDetail.ItemId": "string(12)",
+        "Lpn.LpnDetail.ShippedQuantity": "int(10,500)"
+    },
     "LinkedFields": {
         "AsnId": [
             "ShipmentAsnAssociation.AsnId"

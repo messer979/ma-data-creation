@@ -21,28 +21,13 @@
         "AppointmentContents": 1,
         "PurchaseOrder": 1
     },
-    "RandomFields": [
-        {
-            "FieldName": "PreferredDateTime",
-            "FieldType": "datetime(7)"
-        },
-        {
-            "FieldName": "ArrivalDateTime",
-            "FieldType": "datetime(7)"
-        },
-        {
-            "FieldName": "EstimatedArrivalDateTime",
-            "FieldType": "datetime(7)"
-        },
-        {
-            "FieldName": "VendorId",
-            "FieldType": "choice(KR_VENDOR_019,KR_VENDOR_020,KR_VENDOR_021,VENDOR_001,VENDOR_002)"
-        },
-        {
-            "FieldName": "PurchaseOrder.VendorId",
-            "FieldType": "choice(KR_VENDOR_019,KR_VENDOR_020,KR_VENDOR_021,VENDOR_001,VENDOR_002)"
-        }
-    ],
+    "RandomFields": {
+        "PreferredDateTime": "datetime(7)",
+        "ArrivalDateTime": "datetime(7)",
+        "EstimatedArrivalDateTime": "datetime(7)",
+        "VendorId": "choice(KR_VENDOR_019,KR_VENDOR_020,KR_VENDOR_021,VENDOR_001,VENDOR_002)",
+        "PurchaseOrder.VendorId": "choice(KR_VENDOR_019,KR_VENDOR_020,KR_VENDOR_021,VENDOR_001,VENDOR_002)"
+    },
     "LinkedFields": {
         "PurchaseOrder.PurchaseOrderId": [
             "AppointmentContents.PurchaseOrderId.PurchaseOrderId"
