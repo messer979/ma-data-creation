@@ -93,13 +93,7 @@ def load_dev_templates_if_dev_mode():
         return
     
     try:
-        # Get template manager instance (initialize if needed)
-        template_manager = SessionBaseTemplateManager()
-        
-        # Save each template to the session-based manager
-        for template_name, template_content in dev_templates.items():
-            template_manager.save_template(template_name, template_content)
-            
+               
         # Also add templates to the generation templates session state
         for template_name, template_content in dev_templates.items():
             # Create session state key for generation templates

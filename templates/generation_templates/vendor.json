@@ -8,11 +8,8 @@
   "SequenceFields": {
     "VendorId": "CM_VENDOR"
   },
-  "RandomFields": [
-    {
-      "FieldName": "CompanyName",
-      "FieldType": "choice(Acme Corp,Global Industries,Tech Solutions,Supply Chain Inc,Logistics LLC,Manufacturing Co,Distribution Partners,Wholesale Direct,Import Export Ltd,Commercial Vendors)"
-    }
-  ],
+  "RandomFields": {
+    "CompanyName": "choice(Acme Corp,Global Industries,Tech Solutions,Supply Chain Inc,Logistics LLC,Manufacturing Co,Distribution Partners,Wholesale Direct,Import Export Ltd,Commercial Vendors)"
+  },
   "LinkedFields": {}
 }

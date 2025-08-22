@@ -6,6 +6,7 @@ import json
 import streamlit as st
 from typing import List, Dict, Any
 from data_creation.api_operations import send_data_to_api
+from data_creation.history_db import get_history_db
 
 def handle_generate_button_click(selected_template: str,
                                 count: int,
@@ -60,6 +61,20 @@ def handle_generate_button_click(selected_template: str,
             st.session_state.generated_data = generated_data
             st.session_state.data_type = selected_template
             
+            # Save to history database
+            try:
+                history_db = get_history_db()
+                template_content = template_generator.generation_templates.get(selected_template, {})
+                history_db.save_generation_record(
+                    template_name=selected_template,
+                    template_content=template_content,
+                    record_count=len(generated_data),
+                    success=True
+                )
+            except Exception as e:
+                # Don't fail the entire operation if history saving fails
+                print(f"Warning: Failed to save to history database: {e}")
+            
             # Show success message including template save confirmation if applicable
             success_msg = f"✅ Generated {len(generated_data)} records!"
             if template_to_save is not None:
@@ -87,9 +102,10 @@ def handle_generate_button_click(selected_template: str,
                     template_config
                 )
                 st.session_state.api_results = api_results
-                return True
-    
-    return False
+            
+            return True
+        else:
+            return False
 
 
 def extract_template_parameters(selected_template: str) -> Dict[str, Any]:

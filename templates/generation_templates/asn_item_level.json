@@ -20,32 +20,14 @@
     "AsnLine": 2,
     "ShipmentAsnAssociation": 1
   },
-  "RandomFields": [
-    {
-      "FieldName": "EstimatedWeight",
-      "FieldType": "float(1,50,3)"
-    },
-    {
-      "FieldName": "EstimatedVolume",
-      "FieldType": "float(0.1,10,2)"
-    },
-    {
-      "FieldName": "EstimatedReceiptDate",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "EstimatedDeliveryDate",
-      "FieldType": "datetime(future)"
-    },
-    {
-      "FieldName": "AsnLine.ItemId",
-      "FieldType": "choice(010987462)"
-    },
-    {
-      "FieldName": "AsnLine.ShippedQuantity",
-      "FieldType": "int(10,500)"
-    }
-  ],
+  "RandomFields": {
+    "EstimatedWeight": "float(1,50,3)",
+    "EstimatedVolume": "float(0.1,10,2)",
+    "EstimatedReceiptDate": "datetime(future)",
+    "EstimatedDeliveryDate": "datetime(future)",
+    "AsnLine.ItemId": "choice(010987462)",
+    "AsnLine.ShippedQuantity": "int(10,500)"
+  },
   "LinkedFields": {
     "AsnId": [
       "ShipmentAsnAssociation.AsnId"

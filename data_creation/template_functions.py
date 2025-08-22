@@ -40,28 +40,24 @@ def apply_static_fields(record: Dict[str, Any], static_fields: Dict[str, Any]) -
     return record
 
 
-def process_dynamic_field_keywords(prefix: str) -> str:
-    """
-    Process keyword variables in dynamic field prefixes
-    
-    Args:
-        prefix: The prefix string that may contain keyword variables
-    
-    Returns:
-        Processed prefix with keyword variables replaced
-    """
+def process_dynamic_field_keywords(prefix: str, generation_time: str) -> str:
+    """Process keyword variables in dynamic field prefixes (e.g., {{dttm}})."""
     processed = prefix
-    
-    # Replace {{dttm}} with current date in MMDD format
     if '{{dttm}}' in processed:
-        current_date = datetime.now().strftime('%m%d')
-        processed = processed.replace('{{dttm}}', current_date)
+        generation_time_str = generation_time.strftime('%m%d%H%M%S')
+        processed = processed.replace('{{dttm}}', generation_time_str)
+    if '{{dt}}' in processed:
+        generation_time_str = generation_time.strftime('%m%d')
+        processed = processed.replace('{{dt}}', generation_time_str)
+
     return processed
 
 
 def apply_sequence_fields(record: Dict[str, Any], 
                         sequence_fields: Dict[str, str], 
-                        sequence_counters: Dict[str, int]) -> Dict[str, Any]:
+                        sequence_counters: Dict[str, int],
+                        global_config: Dict[str, Any] # Global configuration context
+                        ) -> Dict[str, Any]:
     """
     Apply sequence (incremental) field values to a record
     
@@ -80,28 +76,26 @@ def apply_sequence_fields(record: Dict[str, Any],
             sequence_counters[field] += 1
         
         # Process keyword variables in prefix
-        processed_prefix = process_dynamic_field_keywords(prefix)
-        
+        processed_prefix = process_dynamic_field_keywords(prefix, global_config['generation_time'])
+
         generated_value = f"{processed_prefix}_{sequence_counters[field]:03d}"
         set_nested_field(record, field, generated_value)
     
     return record
 
 
-def apply_random_fields(record: Dict[str, Any], random_fields: List[Dict[str, str]]) -> Dict[str, Any]:
+def apply_random_fields(record: Dict[str, Any], random_fields: Dict[str, str]) -> Dict[str, Any]:
     """
     Apply random field values to a record
     
     Args:
         record: The record to modify
-        random_fields: List of field specifications with FieldName and FieldType
+        random_fields: Dictionary of field_name -> field_type specifications
     
     Returns:
         Modified record
     """
-    for field_spec in random_fields:
-        field_name = field_spec['FieldName']
-        field_type = field_spec['FieldType']
+    for field_name, field_type in random_fields.items():
         random_value = generate_random_value(field_type)
         set_nested_field(record, field_name, random_value)
     
@@ -462,7 +456,8 @@ def expand_nested_array(record: Dict[str, Any], array_path: str, array_length: i
 def create_record_from_template(base_template: Dict[str, Any], 
                               generation_template: Dict[str, Any],
                               index: int,
-                              sequence_counters: Dict[str, int]) -> Dict[str, Any]:
+                              sequence_counters: Dict[str, int],
+                              global_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a single record by applying generation template rules to base template
     
@@ -511,12 +506,12 @@ def create_record_from_template(base_template: Dict[str, Any],
     
     # Apply sequence fields with array handling
     if 'SequenceFields' in generation_template:
-        record = apply_sequence_fields_with_arrays(record, generation_template['SequenceFields'], sequence_counters, array_lengths)
-    
+        record = apply_sequence_fields_with_arrays(record, generation_template['SequenceFields'], sequence_counters, array_lengths, global_config)
+
     # Apply random fields with array handling
     if 'RandomFields' in generation_template:
         record = apply_random_fields_with_arrays(record, generation_template['RandomFields'], array_lengths, unique_context)
-    
+
     # Apply query context fields if available (applied before linked fields so linked fields can reference query values)
     if 'QueryContextFields' in generation_template:
         record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths)
@@ -543,16 +538,16 @@ def expand_fields_for_arrays(fields: Dict[str, Any], array_lengths: Dict[str, in
     return fields
 
 
-def expand_random_fields_for_arrays(random_fields: List[Dict[str, str]], array_lengths: Dict[str, int]) -> List[Dict[str, str]]:
+def expand_random_fields_for_arrays(random_fields: Dict[str, str], array_lengths: Dict[str, int]) -> Dict[str, str]:
     """
     Since arrays are handled iteratively, just return random fields as-is
     
     Args:
-        random_fields: List of random field specifications
+        random_fields: Dictionary of field_name -> field_type specifications
         array_lengths: Dictionary of array_name -> length mappings (not used)
     
     Returns:
-        Original random fields list unchanged
+        Original random fields dictionary unchanged
     """
     return random_fields
 
@@ -711,7 +706,8 @@ def apply_static_fields_with_arrays(record: Dict[str, Any],
 def apply_sequence_fields_with_arrays(record: Dict[str, Any], 
                                    sequence_fields: Dict[str, str], 
                                    sequence_counters: Dict[str, int],
-                                   array_lengths: Dict[str, int]) -> Dict[str, Any]:
+                                   array_lengths: Dict[str, int],
+                                   global_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Apply sequence field values to a record, handling multi-level array fields by iterating over array elements
     
@@ -726,7 +722,7 @@ def apply_sequence_fields_with_arrays(record: Dict[str, Any],
     """
     for field, prefix in sequence_fields.items():
         # Process keyword variables in prefix
-        processed_prefix = process_dynamic_field_keywords(prefix)
+        processed_prefix = process_dynamic_field_keywords(prefix, global_config['generation_time'])
         
         if '.' in field:
             # Check if this field references any array (including nested arrays)
@@ -827,7 +823,7 @@ def apply_to_nested_arrays_with_index(record: Dict[str, Any], array_path: str, f
 
 
 def apply_random_fields_with_arrays(record: Dict[str, Any], 
-                                  random_fields: List[Dict[str, str]],
+                                  random_fields: Dict[str, str],
                                   array_lengths: Dict[str, int],
                                   unique_context: Dict[str, set] = None) -> Dict[str, Any]:
     """
@@ -835,7 +831,7 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
     
     Args:
         record: The record to modify
-        random_fields: List of field specifications with FieldName and FieldType
+        random_fields: Dictionary of field_name -> field_type specifications
         array_lengths: Dictionary of array_name -> length mappings
         unique_context: Dictionary tracking used values for choiceUnique fields per array context
     
@@ -846,9 +842,7 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
     if unique_context is None:
         unique_context = {}
     
-    for field_spec in random_fields:
-        field_name = field_spec['FieldName']
-        field_type = field_spec['FieldType']
+    for field_name, field_type in random_fields.items():
         
         if '.' in field_name:
             # Check if this field references any array (including nested arrays)
