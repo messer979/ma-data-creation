@@ -1,0 +1,22 @@
+{
+    "UserId": "sverrone@manh.com",
+    "TaskId": "TSK1208001",
+    "ActivityId": "DYN RECEIVING - LV",
+    "StartDatetime": "2025-12-08T14:15:00",
+    "EndDatetime": "2025-12-08T14:20:00",
+    "TransactionTypeId": "Receiving",
+    "LaborMessageSourceId": "WMS",
+    "HeaderSourceId": "WMS",
+    "LaborMessageDetail": [
+        {
+            "TransactionSequence": 1,
+            "TaskId": "TSK1208001",
+            "ActivityId": "DYN RECEIVING - LV",
+            "CompletedDatetime": "2025-12-08T14:20:00",
+            "Quantity": 1,
+            "IlpnId": "iLPNLVTST001",
+            "ExecutionUom": "RECEIVIING PALLET - S - LV",
+            "PalletId": "PLTLVTST001"
+        }
+    ]
+}

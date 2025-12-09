@@ -102,7 +102,7 @@ res = requests.post(from_url + inv_search_endpoint, headers=from_headers, json=d
 
 # download_batch_size = args.download_batch_size
 download_batch_size = 200
-TODO total = res.header['totalCount']
+total = res.header['totalCount']
 number_of_batches = math.ceil(int(total)/download_batch_size)
 
 print('downloading inventory files to staging_table.db')

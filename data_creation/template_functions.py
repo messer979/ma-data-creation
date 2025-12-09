@@ -299,13 +299,18 @@ def generate_random_value_with_context(field_type: str, unique_context: Dict[str
         Generated random value
     """
     # Handle choiceUnique with context
-    if field_type.startswith('choiceUnique(') and unique_context is not None and field_path and array_path:
+    if field_type.startswith('choiceUnique(') and unique_context is not None and field_path:
         match = re.match(r'choiceUnique\(\s*([^)]+)\s*\)', field_type)
         if match:
             choices = [choice.strip() for choice in match.group(1).split(',')]
             
-            # Create a unique key for this field within this array context
-            context_key = f"{array_path}.{field_path}"
+            # Create a unique key for this field 
+            # For array fields: use array_path.field_path
+            # For non-array fields: use just field_path
+            if array_path and array_path != "non_array":
+                context_key = f"{array_path}.{field_path}"
+            else:
+                context_key = field_path
             
             # Initialize the used set if not exists
             if context_key not in unique_context:
@@ -457,7 +462,8 @@ def create_record_from_template(base_template: Dict[str, Any],
                               generation_template: Dict[str, Any],
                               index: int,
                               sequence_counters: Dict[str, int],
-                              global_config: Dict[str, Any]) -> Dict[str, Any]:
+                              global_config: Dict[str, Any],
+                              unique_context: Dict[str, set] = None) -> Dict[str, Any]:
     """
     Create a single record by applying generation template rules to base template
     
@@ -466,6 +472,8 @@ def create_record_from_template(base_template: Dict[str, Any],
         generation_template: Generation rules template
         index: Record index (0-based)
         sequence_counters: Mutable dictionary tracking sequence field counters
+        global_config: Global configuration context
+        unique_context: Shared dictionary tracking used values for uniqueness across all records
     
     Returns:
         Generated record
@@ -473,8 +481,9 @@ def create_record_from_template(base_template: Dict[str, Any],
     # Start with a deep copy of the base template
     record = deep_copy_template(base_template)
     # print(record.keys())
-    # Initialize unique context for choiceUnique fields
-    unique_context = {}
+    # Initialize unique context for choiceUnique fields if not provided
+    if unique_context is None:
+        unique_context = {}
       # Get array lengths configuration
     array_lengths = generation_template.get('ArrayLengths', {})
       # Initialize arrays to the specified lengths before processing fields
@@ -514,7 +523,7 @@ def create_record_from_template(base_template: Dict[str, Any],
 
     # Apply query context fields if available (applied before linked fields so linked fields can reference query values)
     if 'QueryContextFields' in generation_template:
-        record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths)
+        record = apply_query_context_fields_with_arrays(record, generation_template['QueryContextFields'], array_lengths, unique_context)
     
     # Apply linked fields with array handling
     if 'LinkedFields' in generation_template:
@@ -857,12 +866,22 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
                     # Regular array field - apply to all nested array elements with different random values
                     apply_to_nested_arrays(record, array_path, field_suffix, generate_random_value, field_type)
             else:
-                # Regular nested field
-                random_value = generate_random_value(field_type)
+                # Regular nested field - check if it's choiceUnique
+                if field_type.startswith('choiceUnique('):
+                    random_value = generate_random_value_with_context(
+                        field_type, unique_context, field_name, "non_array"
+                    )
+                else:
+                    random_value = generate_random_value(field_type)
                 set_nested_field(record, field_name, random_value)
         else:
-            # Simple field
-            random_value = generate_random_value(field_type)
+            # Simple field - check if it's choiceUnique
+            if field_type.startswith('choiceUnique('):
+                random_value = generate_random_value_with_context(
+                    field_type, unique_context, field_name, "non_array"
+                )
+            else:
+                random_value = generate_random_value(field_type)
             set_nested_field(record, field_name, random_value)
     
     return record
@@ -1192,7 +1211,8 @@ def apply_to_nested_arrays_with_unique_context(record: Dict[str, Any], array_pat
 
 def apply_query_context_fields_with_arrays(record: Dict[str, Any], 
                                          query_context_fields: Dict[str, Any], 
-                                         array_lengths: Dict[str, int]) -> Dict[str, Any]:
+                                         array_lengths: Dict[str, int],
+                                         unique_context: Dict[str, set] = None) -> Dict[str, Any]:
     """
     Apply query context fields to a record with array handling
     
@@ -1200,20 +1220,25 @@ def apply_query_context_fields_with_arrays(record: Dict[str, Any],
         record: The record to modify
         query_context_fields: Dictionary of field_name -> query specification
         array_lengths: Dictionary of array_name -> length mappings
+        unique_context: Dictionary tracking used values for unique fields
     
     Returns:
         Modified record
     """
+    # Initialize unique context if not provided
+    if unique_context is None:
+        unique_context = {}
+    
     for field_name, query_spec in query_context_fields.items():
         # Find the array path and field suffix
         array_path, field_suffix = find_array_path_and_suffix(field_name, array_lengths)
         
         if array_path:
             # Handle array field
-            apply_query_context_field_to_array(record, array_path, field_suffix, query_spec)
+            apply_query_context_field_to_array(record, array_path, field_suffix, query_spec, unique_context)
         else:
             # Handle non-array field
-            apply_query_context_field(record, field_name, query_spec)
+            apply_query_context_field(record, field_name, query_spec, unique_context)
     
     return record
 
@@ -1221,7 +1246,8 @@ def apply_query_context_fields_with_arrays(record: Dict[str, Any],
 def apply_query_context_field_to_array(record: Dict[str, Any], 
                                      array_path: str, 
                                      field_suffix: str, 
-                                     query_spec: Dict[str, Any]):
+                                     query_spec: Dict[str, Any],
+                                     unique_context: Dict[str, set] = None):
     """
     Apply query context field to all elements in an array
     
@@ -1230,6 +1256,7 @@ def apply_query_context_field_to_array(record: Dict[str, Any],
         array_path: Path to the array in the record
         field_suffix: Field name within each array element
         query_spec: Query specification dictionary
+        unique_context: Dictionary tracking used values for unique fields
     """
     def apply_to_array_elements(current_obj: Dict[str, Any], path_parts: List[str], depth: int = 0):
         if depth >= len(path_parts):
@@ -1238,7 +1265,7 @@ def apply_query_context_field_to_array(record: Dict[str, Any],
                 # Apply to each element in the array
                 for element in current_obj:
                     if isinstance(element, dict):
-                        apply_query_context_field(element, field_suffix, query_spec)
+                        apply_query_context_field(element, field_suffix, query_spec, unique_context)
             return
         
         current_part = path_parts[depth]
@@ -1355,7 +1382,7 @@ def apply_operation_to_value(value: Any, operation: str) -> Any:
         return value
 
 
-def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spec: Dict[str, Any]):
+def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spec: Dict[str, Any], unique_context: Dict[str, set] = None):
     """
     Apply a single query context field to a record
     
@@ -1363,6 +1390,7 @@ def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spe
         record: The record to modify
         field_name: Name of the field to set
         query_spec: Query specification with 'query', 'column', and optional 'mode', 'template_key', 'query_key'
+        unique_context: Dictionary tracking used values for unique fields
     """
     
     try:
@@ -1406,12 +1434,40 @@ def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spe
         elif mode == 'random':
             value = get_random_value_from_column(query_name, column_name)
         elif mode == 'unique':
-            # For unique mode, get all unique values and choose randomly
-            unique_values = get_unique_column_values(query_name, column_name)
-            if unique_values:
-                value = random.choice(unique_values)
-            else:
+            # For unique mode, track used values to ensure uniqueness
+            if unique_context is None:
+                unique_context = {}
+            
+            # Create context key for this field
+            context_key = f"query_unique_{query_name}_{column_name}_{field_name}"
+            
+            # Initialize used set if not exists
+            if context_key not in unique_context:
+                unique_context[context_key] = set()
+            
+            # Get all unique values from the query
+            all_unique_values = get_unique_column_values(query_name, column_name)
+            if not all_unique_values:
                 value = None
+            else:
+                # Filter out already used values
+                used_values = unique_context[context_key]
+                unused_values = [v for v in all_unique_values if v not in used_values]
+                
+                # Filter out already used values
+                used_values = unique_context[context_key]
+                unused_values = [v for v in all_unique_values if v not in used_values]
+                
+                if unused_values:
+                    # Choose from unused values
+                    value = random.choice(unused_values)
+                    unique_context[context_key].add(value)
+                else:
+                    # All values have been used, reset and start over (or could choose to fail)
+                    unique_context[context_key].clear()
+                    value = random.choice(all_unique_values)
+                    unique_context[context_key].add(value)
+                    
         elif mode == 'sequential':
             # For sequential mode, get all values and choose based on some sequence
             # This is a simplified implementation - could be enhanced

@@ -93,13 +93,18 @@ class TemplateGenerator:
         
         # Track sequence field counters across all records
         sequence_counters = {}
+        
+        # Shared unique context for tracking uniqueness across ALL records
+        shared_unique_context = {}
+        
         for i in range(count):
             record = create_record_from_template(
                 base_template,
                 generation_template,
                 i,
                 sequence_counters,
-                global_config
+                global_config,
+                shared_unique_context  # Pass the shared context to maintain uniqueness across records
             )
             records.append(record)
         

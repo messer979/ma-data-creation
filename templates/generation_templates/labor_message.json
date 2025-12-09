@@ -1,0 +1,38 @@
+{
+                "ArrayLengths": {
+                    "LaborMessageDetail": "int(1,5)"
+                },
+                "SequenceFields": {
+                    "TaskId": "TSK{{dttm}}",
+                    "LaborMessageDetail.TaskId": "TSK{{dttm}}",
+                    "LaborMessageDetail.IlpnId": "iLPN{{dttm}}",
+                    "LaborMessageDetail.PalletId": "PLT{{dttm}}"
+                },
+                "LinkedFields": {
+                    "TaskId": [
+                        "LaborMessageDetail.TaskId"
+                    ],
+                    "ActivityId": [
+                        "LaborMessageDetail.ActivityId"
+                    ],
+                    "StartDatetime": [
+                        "EndDatetime"
+                    ],
+                    "EndDatetime": [
+                        "LaborMessageDetail.CompletedDatetime"
+                    ]
+                },
+                "RandomFields": {
+                    "UserId": "choice(user1@manh.com,user2@manh.com,user3@manh.com,admin@manh.com,operator@manh.com)",
+                    "ActivityId": "choice(DYN RECEIVING - LV,DYN PICKING - LV,DYN PUTAWAY - LV,DYN PACKING - LV,DYN SHIPPING - LV,DYN REPLENISHMENT - LV)",
+                    "StartDatetime": "datetime(0)",
+                    "LaborMessageDetail.Quantity": "int(1,100)",
+                    "LaborMessageDetail.TransactionSequence": "int(1,10)"
+                },
+                "StaticFields": {
+                    "TransactionTypeId": "Receiving",
+                    "LaborMessageSourceId": "WMS",
+                    "HeaderSourceId": "WMS",
+                    "LaborMessageDetail.ExecutionUom": "RECEIVIING PALLET - S - LV"
+                }
+            }
