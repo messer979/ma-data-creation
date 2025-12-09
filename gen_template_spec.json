@@ -1,0 +1,131 @@
+{
+  "Documentation": "Generation Template Specification",
+  "Description": "This document describes all available configuration options for data generation templates",
+  "ArrayLengths": {
+    "_description": "Defines sizes for arrays in the output. Can use fixed numbers or random ranges.",
+    "_format": "{arrayPath: fixedLength} or {arrayPath: 'int(min,max)'}",
+    "_example1": "'Items': 5",
+    "_example2": "'Items.Details': 'int(2,4)'",
+    "_example3": "'DeepNested.Level1.Level2.Level3': 3",
+    "_note": "Supports up to 4 levels of array nesting"
+  },
+  
+  "StaticFields": {
+    "_description": "Fields with fixed static values that don't change between records",
+    "_format": "{fieldPath: staticValue}",
+    "_example1": "'Status': 'NEW'",
+    "_example2": "'Metadata.Source': 'API'",
+    "_example3": "'Items.ItemType': 'REGULAR'",
+    "_note": "Can reference both top-level and nested array fields"
+  },
+  
+  "SequenceFields": {
+    "_description": "Auto-incrementing fields with custom prefixes",
+    "_format": "{fieldPath: prefixString}",
+    "_example1": "'OrderId': 'ORD'",
+    "_example2": "'Items.ItemId': 'ITEM'",
+    "_note": "Generates values like PREFIX_001, PREFIX_002, etc. Can use dynamic variables with double curly braces such as {{dt}}, {{dttm}} in prefixes"
+  },
+  
+  "RandomFields": {
+    "_description": "Array of field specifications with random value generation",
+    "_format": "Array of {FieldName: path, FieldType: typeSpecification}",
+    "Available_FieldTypes": [
+      {
+        "type": "int(min,max)",
+        "description": "Random integer between min and max (inclusive)",
+        "example": "int(1,100)"
+      },
+      {
+        "type": "float(min,max)",
+        "description": "Random float between min and max",
+        "example": "float(1.0,50.0)"
+      },
+      {
+        "type": "string(length)",
+        "description": "Random alphanumeric string of specified length",
+        "example": "string(10)"
+      },
+      {
+        "type": "datetime(start,end)",
+        "description": "Random date/time between start and end dates",
+        "example": "datetime(2023-01-01,2023-12-31)"
+      },
+      {
+        "type": "boolean",
+        "description": "Random true or false value",
+        "example": "boolean"
+      },
+      {
+        "type": "uuid",
+        "description": "Generate a random UUID",
+        "example": "uuid"
+      },
+      {
+        "type": "email",
+        "description": "Generate a random email address",
+        "example": "email"
+      },
+      {
+        "type": "choice(value1,value2,...)",
+        "description": "Randomly select from provided options",
+        "example": "choice(RED,GREEN,BLUE)"
+      },
+      {
+        "type": "choiceUnique(value1,value2,...)",
+        "description": "Non-repeating random selection from provided options",
+        "example": "choiceUnique(A,B,C,D)"
+      }
+    ]
+  },
+  
+  "QueryContextFields": {
+    "_description": "Fields populated from database queries with optional transformations",
+    "_format": "{fieldPath: {query, column, mode, operation, template_key, query_key}}",
+    "Required_Properties": {
+      "query": "String - Name of the predefined query to execute",
+      "column": "String - Column name from query results to use"
+    },
+    "Optional_Properties": {
+      "mode": {
+        "description": "How to select values from the query results",
+        "options": [
+          "random (default) - Select random row from results",
+          "unique - Select from unique values only",
+          "sequential - Select based on deterministic sequence",
+          "match - Match rows based on template_key/query_key"
+        ]
+      },
+      "template_key": "String - Field in template to match against (for match mode)",
+      "query_key": "String - Column in query to match against (for match mode)",
+      "operation": {
+        "description": "Mathematical transformation to apply to the value",
+        "format": "operator + operand",
+        "operators": [
+          "+  (addition)",
+          "-  (subtraction)",
+          "*  (multiplication)",
+          "/  (division)",
+          "%  (modulo)",
+          "^  (exponentiation)"
+        ],
+        "operands": [
+          "Single value: +5, *2, etc.",
+          "Range format: +(1,100), *(0.5,2.0), etc."
+        ],
+        "examples": [
+          "+5.50 - Add 5.50 to the query value",
+          "*2 - Multiply query value by 2",
+          "+(1,100) - Add random integer between 1 and 100"
+        ]
+      }
+    }
+  },
+  "LinkedFields": {
+    "_description": "Fields whose values are derived from other fields in the record",
+    "_format": "{sourceFieldPath: [targetField1, targetField2, ...]}",
+    "_example1": "'OrderId': ['ReferenceNumber', 'DisplayId']",
+    "_example2": "'Items.ItemId': ['Items.ReferenceNumber']",
+    "_note": "Source and target fields can be at any nesting level"
+  }
+}
