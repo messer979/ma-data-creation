@@ -1,0 +1,24 @@
+{
+    "StaticFields": {
+        "InheritIsReplenishableFromLocation": true
+    },
+    "SequenceFields": {},
+    "ArrayLengths": {},
+    "RandomFields": {
+        "MaxUomQuantity": "int(50,200)",
+        "MinUomQuantity": "int(0,25)"
+    },
+    "LinkedFields": {},
+    "QueryContextFields": {
+        "ItemId": {
+            "query": "items",
+            "column": "ITEM_ID",
+            "mode": "unique"
+        },
+        "LocationId": {
+            "query": "locations",
+            "column": "LOCATION_ID",
+            "mode": "unique"
+        }
+    }
+}

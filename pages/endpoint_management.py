@@ -8,7 +8,7 @@ import json
 
 import streamlit as st
 from components.endpoint_config_ui import render_template_endpoint_config
-from components.sidebar import render_sidebar
+from components.sidebar import render_sidebar, mark_config_updated
 from config import load_initial_config_to_session
 from components.debug import render_debug_section
 
@@ -87,6 +87,7 @@ def render_environment_configuration():
                     st.session_state['selected_location'] = new_facility
                     changed = True
                 if changed:
+                    mark_config_updated()
                     st.success("✅ Environment configuration saved successfully!")
                     st.rerun()
                 else:

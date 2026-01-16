@@ -31,6 +31,7 @@ def send_data_to_api(generated_data: List[Dict[Any, Any]],
     api_results = []
     progress_bar = st.progress(0)
     status_text = st.empty()
+    response_text = st.empty()
     
     total_batches = (len(generated_data) + batch_size - 1) // batch_size
     for i in range(0, len(generated_data), batch_size):
@@ -43,6 +44,9 @@ def send_data_to_api(generated_data: List[Dict[Any, Any]],
             batch, endpoint=api_endpoint, headers=api_headers, template_config=template_config
         )
 
+        # Update status with response code
+        status_code = result.get('status_code', 'N/A')
+        response_text.text(f"Batch {batch_num}/{total_batches} - Response: {status_code}")
         
         api_results.append({
             'batch': batch_num,
@@ -84,20 +88,30 @@ def display_api_results(api_results: List[Dict]):
                     if trace_id:
                         st.caption(f"Trace ID: {trace_id}")
                 
-                # Display the API response JSON
+                # Display the API response JSON - lazy load for performance
                 if 'response' in batch_info:
                     st.subheader("API Response")
                     if batch_info['response']:
-                        # Toggle switch for response view
-                        show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"response_view_{result['batch']}")
+                        # Button to show/hide response details
+                        show_response_key = f"show_response_{result['batch']}"
+                        if show_response_key not in st.session_state:
+                            st.session_state[show_response_key] = False
                         
-                        if show_as_code:
-                            # Format and display the JSON response as code
-                            import json
-                            st.code(json.dumps(batch_info['response'], indent=2), language='json')
-                        else:
-                            # Display as interactive JSON tree (default)
-                            st.json(batch_info['response'])
+                        if st.button("Show Response Details" if not st.session_state[show_response_key] else "Hide Response Details", key=f"btn_response_{result['batch']}"):
+                            st.session_state[show_response_key] = not st.session_state[show_response_key]
+                        
+                        # Only render if user has clicked to show
+                        if st.session_state[show_response_key]:
+                            # Toggle switch for response view
+                            show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"response_view_{result['batch']}")
+                            
+                            if show_as_code:
+                                # Format and display the JSON response as code
+                                import json
+                                st.code(json.dumps(batch_info['response'], indent=2), language='json')
+                            else:
+                                # Display as interactive JSON tree (default)
+                                st.json(batch_info['response'])
                     else:
                         st.info("No response body returned")
                 else:
@@ -131,16 +145,26 @@ def display_api_results(api_results: List[Dict]):
                 # Tab 1: API Error Response
                 with tab1:
                     if 'response' in batch_info and batch_info['response']:
-                        # Toggle switch for response view
-                        show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"error_response_view_{result['batch']}")
+                        # Button to show/hide error response details
+                        show_error_response_key = f"show_error_response_{result['batch']}"
+                        if show_error_response_key not in st.session_state:
+                            st.session_state[show_error_response_key] = False
                         
-                        if show_as_code:
-                            # Format and display the JSON response as code
-                            import json
-                            st.code(json.dumps(batch_info['response'], indent=2), language='json')
-                        else:
-                            # Display as interactive JSON tree (default)
-                            st.json(batch_info['response'])
+                        if st.button("Show Error Response" if not st.session_state[show_error_response_key] else "Hide Error Response", key=f"btn_error_response_{result['batch']}"):
+                            st.session_state[show_error_response_key] = not st.session_state[show_error_response_key]
+                        
+                        # Only render if user has clicked to show
+                        if st.session_state[show_error_response_key]:
+                            # Toggle switch for response view
+                            show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"error_response_view_{result['batch']}")
+                            
+                            if show_as_code:
+                                # Format and display the JSON response as code
+                                import json
+                                st.code(json.dumps(batch_info['response'], indent=2), language='json')
+                            else:
+                                # Display as interactive JSON tree (default)
+                                st.json(batch_info['response'])
                     elif 'response' in batch_info:
                         st.info("No response body returned")
                     else:
@@ -149,14 +173,24 @@ def display_api_results(api_results: List[Dict]):
                 # Tab 2: Request Body
                 with tab2:
                     if 'request_body' in batch_info:
-                        # Toggle switch for request view
-                        show_request_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"request_view_{result['batch']}")
+                        # Button to show/hide request body
+                        show_request_key = f"show_request_{result['batch']}"
+                        if show_request_key not in st.session_state:
+                            st.session_state[show_request_key] = False
                         
-                        if show_request_as_code:
-                            import json
-                            st.code(json.dumps(batch_info['request_body'], indent=2), language='json')
-                        else:
-                            st.json(batch_info['request_body'])
+                        if st.button("Show Request Body" if not st.session_state[show_request_key] else "Hide Request Body", key=f"btn_request_{result['batch']}"):
+                            st.session_state[show_request_key] = not st.session_state[show_request_key]
+                        
+                        # Only render if user has clicked to show
+                        if st.session_state[show_request_key]:
+                            # Toggle switch for request view
+                            show_request_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"request_view_{result['batch']}")
+                            
+                            if show_request_as_code:
+                                import json
+                                st.code(json.dumps(batch_info['request_body'], indent=2), language='json')
+                            else:
+                                st.json(batch_info['request_body'])
                     else:
                         st.info("No request data available")
 

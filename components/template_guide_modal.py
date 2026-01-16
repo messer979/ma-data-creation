@@ -44,8 +44,12 @@ def guide_modal():
         6. **Export templates** before closing to save your work
           ### Main Sections:
         - **📊 Data Generation**: Main interface for creating data
-        - **🗂️ Template Management**: Manage base and generation templates (session-only)
-        - **🔧 Endpoint Config**: Configure API endpoints and authentication
+        - **🗂️ Template Management**: Bulk import/export for base and generation templates
+        - **🔧 Endpoint Management**: Configure API endpoints and authentication
+        - **📦 Inventory Import**: Direct inventory data transfer
+        - **🧾 Order Import**: Direct order data transfer
+        - **🔍 Query Context**: Execute SQL queries for realistic data generation
+        - **📊 Generation History**: Track template usage and generation statistics
         """)
     
     with tab2:
@@ -169,27 +173,24 @@ def guide_modal():
         - **Array fields** increment per-record: Each ASN's lines start at 1
         - **Array length support**: Compatible with `ArrayLengths` specification
         
-        **🎲 RandomFields:** Random values based on type
+        **🎲 RandomFields:** Random values based on type (Key-Value Format)
         ```json
-        "RandomFields": [
-            {
-                "FieldName": "Quantity",
-                "FieldType": "int(1,100)"
-            },
-            {
-                "FieldName": "Price",
-                "FieldType": "float(10.0,99.99,2)"
-            },
-            {
-                "FieldName": "City",
-                "FieldType": "choice(Atlanta,New York,Chicago)"
-            },
-            {
-                "FieldName": "CreatedDate",
-                "FieldType": "datetime(future)"
-            }
-        ]
+        "RandomFields": {
+            "Quantity": "int(1,100)",
+            "Price": "float(10.0,99.99,2)",
+            "City": "choice(Atlanta,New York,Chicago)",
+            "Status": "choiceUnique(PENDING,ACTIVE,COMPLETED)",
+            "CreatedDate": "datetime(future)",
+            "Weight": "float(5,50)",
+            "IsActive": "boolean"
+        }
         ```
+        
+        **Key Changes:**
+        - Now uses **key:value map** format instead of array
+        - Field name is the key, field type is the value
+        - Cleaner, more concise syntax
+        - Supports all nested field paths with dot notation
         
         **🔗 LinkedFields:** Copy values between fields
         ```json
@@ -243,17 +244,27 @@ def guide_modal():
         - **Dynamic lengths**: Use `int(min,max)` for random array sizes
         - **Nested arrays**: Supports dot notation (e.g., `Lpn.LpnDetail`)
           ### Field Types:
-        - `int(min,max)` - Random integer
+        - `int(min,max)` - Random integer between min and max
+        - `int(length)` - Random integer with specific digit length (e.g., `int(5)` = 5-digit number)
         - `float(min,max,precision)` - Random decimal with specified precision
         - `float(min,max)` - Random decimal (default 2 decimals)
         - `float` - Random decimal 0-100 (default 2 decimals)
         - `string(length)` - Random alphanumeric string
         - `choice(opt1,opt2,opt3)` - Random selection from options
-        - `choiceUnique(opt1,opt2,opt3)` - Unique selection within array siblings (auto-fallback when exhausted)
+        - `choiceUnique(opt1,opt2,opt3)` - **Unique selection across all records** (no duplicates until exhausted, then auto-reuses)
         - `datetime(now|future|past)` - Date/time generation
+        - `datetime(7)` - Date/time N days from now (positive = future, negative = past)
         - `boolean` - True/false values
         - `uuid` - UUID string generation
         - `email` - Random email addresses
+        
+        ### 🔒 Uniqueness Behavior:
+        **`choiceUnique` tracks values across ALL records and arrays:**
+        - First record uses first unique value
+        - Second record uses second unique value
+        - Once all choices exhausted, automatically reuses values
+        - Example: `choiceUnique(A,B,C)` with 5 records → A, B, C, A, B
+        - **Works for both simple fields and array fields**
         
         ### Query Context Integration:
         - Use **Query Context page** to execute SQL queries against target environment
@@ -412,11 +423,12 @@ def guide_modal():
         - **Templates lost on refresh** (by design for privacy)
         - **Export/import** for permanent storage
         
-        **📋 Template Types Management:**
-        - **Base Templates**: Structure definitions and default values
-        - **Generation Templates**: Randomization and field generation rules
-        - **Separate import/export** for each template type
-        - **Quick overview** via sidebar expanders
+        **📋 Bulk Import/Export:**
+        - **Single export button** for all base AND generation templates
+        - **Single import button** to restore complete configuration
+        - **Comprehensive JSON format** includes metadata and counts
+        - **Conflict detection** shows new vs. overwrite status
+        - **Overwrite control** via checkbox during import
         
         ### Features:
           **📝 Template Editing:**
@@ -424,20 +436,26 @@ def guide_modal():
         - **JSON syntax validation** with error checking
         - **Live preview** of template structure
         - **Session-only modifications** (temporary)
-        - **Real-time template testing** with small data generation
-          **📥📤 Session Import/Export:**
-        - **Export templates** to JSON files for backup
-        - **Import templates** from backup files (session-only)
-        - **Bulk operations** for multiple templates
-        - **Template validation** during import/export
-        - **Filename prefixes** indicate session-only export
-        - **Separate handling** for base and generation templates
+        - **Create, edit, delete** templates in session
+          **📥📤 Unified Import/Export:**
+        - **Single file** contains all templates (base + generation)
+        - **Environment settings** also included in export
+        - **Endpoint configurations** preserved
+        - **Import preview** shows what will be added/updated
+        - **Detailed results** after import (imported, skipped, errors)
+        
+        **💾 Full Config Export (Sidebar):**
+        - **One-click export** of complete RAD configuration
+        - **Includes**: endpoints, base templates, generation templates, environment settings
+        - **Status tracking**: Shows "Updated at HH:MM" or "Saved"
+        - **Automatic tracking**: Labels update when config changes detected
         
         **🔍 Template Analysis:**
         - **Real-time overview** of loaded templates
         - **Field count and size** metrics
         - **Session status** indicators
         - **Template structure** validation
+        - **Side-by-side comparison** of base and generation templates
         
         ### How to Use:
         

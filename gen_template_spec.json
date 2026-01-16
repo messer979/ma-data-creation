@@ -47,9 +47,14 @@
         "example": "string(10)"
       },
       {
-        "type": "datetime(start,end)",
-        "description": "Random date/time between start and end dates",
-        "example": "datetime(2023-01-01,2023-12-31)"
+        "type": "datetime(value)",
+        "description": "ISO format date/time. Supports: datetime(now), datetime(past), datetime(future), datetime(7) for 7 days from now, or datetime(-3) for 3 days ago",
+        "example": "datetime(now)"
+      },
+      {
+        "type": "date(value)",
+        "description": "YYYY-MM-DD format date. Supports: date(now), date(past), date(future), date(7) for 7 days from now, or date(-3) for 3 days ago",
+        "example": "date(now)"
       },
       {
         "type": "boolean",
@@ -73,8 +78,15 @@
       },
       {
         "type": "choiceUnique(value1,value2,...)",
-        "description": "Non-repeating random selection from provided options",
-        "example": "choiceUnique(A,B,C,D)"
+        "description": "Non-repeating random selection from provided options. Once all choices are used, it resets and starts reusing values randomly.",
+        "example": "choiceUnique(A,B,C,D)",
+        "note": "Tracks used values per field path to ensure uniqueness across all generated records"
+      },
+      {
+        "type": "choiceOrder(value1,value2,...)",
+        "description": "Sequential selection from provided options in order from first to last. Once all choices are used, it resets and starts over from the first option.",
+        "example": "choiceOrder(SMALL,MEDIUM,LARGE,XLARGE)",
+        "note": "Tracks position per field path to ensure sequential ordering across all generated records"
       }
     ]
   },

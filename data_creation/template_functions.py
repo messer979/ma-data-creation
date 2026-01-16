@@ -8,6 +8,8 @@ import random
 import string
 import uuid
 import re
+import math
+import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from copy import deepcopy
@@ -233,29 +235,34 @@ def generate_random_value(field_type: str) -> Any:
     elif field_type == 'boolean':
         return random.choice([True, False])
     
-    elif field_type.startswith('datetime('):
-        # datetime(now), datetime(past), datetime(future), datetime(7) - with whitespace handling
-        # First try to match numeric values like datetime(7) for specific days
-        numeric_match = re.match(r'datetime\(\s*(-?\d+)\s*\)', field_type)
+    elif field_type.startswith('datetime(') or field_type.startswith('date('):
+        # datetime(now)/date(now), datetime(past)/date(past), datetime(future)/date(future), datetime(7)/date(7)
+        # Determine format based on type - check for exact 'date(' not 'datetime('
+        is_date_only = field_type.startswith('date(') and not field_type.startswith('datetime(')
+        
+        # First try to match numeric values like datetime(7) or date(7) for specific days
+        numeric_match = re.match(r'(?:datetime|date)\(\s*(-?\d+)\s*\)', field_type)
         if numeric_match:
             days_offset = int(numeric_match.group(1))
             target_date = datetime.now() + timedelta(days=days_offset)
-            return target_date.isoformat()
+            return target_date.strftime('%Y-%m-%d') if is_date_only else target_date.isoformat()
+            # return target_date.strftime('%Y-%m-%d') if is_date_only else target_date.isoformat()
         
-        # Then try to match keyword values like datetime(now), datetime(past), datetime(future)
-        keyword_match = re.match(r'datetime\(\s*(\w+)\s*\)', field_type)
+        # Then try to match keyword values like datetime(now)/date(now), datetime(past)/date(past), datetime(future)/date(future)
+        keyword_match = re.match(r'(?:datetime|date)\(\s*(\w+)\s*\)', field_type)
         if keyword_match:
             time_type = keyword_match.group(1)
             if time_type == 'now':
-                return datetime.now().isoformat()
+                result_date = datetime.now()
+                return result_date.strftime('%Y-%m-%d') if is_date_only else result_date.isoformat()
             elif time_type == 'past':
                 days_ago = random.randint(1, 365)
                 past_date = datetime.now() - timedelta(days=days_ago)
-                return past_date.isoformat()
+                return past_date.strftime('%Y-%m-%d') if is_date_only else past_date.isoformat()
             elif time_type == 'future':
                 days_ahead = random.randint(1, 365)
                 future_date = datetime.now() + timedelta(days=days_ahead)
-                return future_date.isoformat()
+                return future_date.strftime('%Y-%m-%d') if is_date_only else future_date.isoformat()
     elif field_type.startswith('choice('):
         # choice(option1,option2,option3) - with whitespace handling
         match = re.match(r'choice\(\s*([^)]+)\s*\)', field_type)
@@ -272,6 +279,16 @@ def generate_random_value(field_type: str) -> Any:
             # For now, return a random choice. The uniqueness logic will be handled
             # in the array processing functions that call this with additional context.
             return random.choice(choices)
+    
+    elif field_type.startswith('choiceOrder('):
+        # choiceOrder(option1,option2,option3) - sequential selection with whitespace handling
+        # Note: This function signature will be updated to support order context
+        match = re.match(r'choiceOrder\(\s*([^)]+)\s*\)', field_type)
+        if match:
+            choices = [choice.strip() for choice in match.group(1).split(',')]
+            # For now, return the first choice. The sequential logic will be handled
+            # in the array processing functions that call this with additional context.
+            return choices[0] if choices else f"RANDOM_{random.randint(1000, 9999)}"
     
     elif field_type == 'uuid':
         return str(uuid.uuid4())
@@ -290,14 +307,46 @@ def generate_random_value_with_context(field_type: str, unique_context: Dict[str
     Generate a random value based on field type specification with uniqueness context
     
     Args:
-        field_type: Type specification string (e.g., "float(2,3)", "string(12)", "boolean", "choiceUnique(a,b,c)")
-        unique_context: Dictionary tracking used values for choiceUnique fields per array context
+        field_type: Type specification string (e.g., "float(2,3)", "string(12)", "boolean", "choiceUnique(a,b,c)", "choiceOrder(a,b,c)")
+        unique_context: Dictionary tracking used values for choiceUnique fields and indices for choiceOrder fields per array context
         field_path: Full path of the field being generated (for uniqueness tracking)
         array_path: Path of the containing array (for uniqueness scope)
     
     Returns:
         Generated random value
     """
+    # Handle choiceOrder with context - sequential selection
+    if field_type.startswith('choiceOrder(') and unique_context is not None and field_path:
+        match = re.match(r'choiceOrder\(\s*([^)]+)\s*\)', field_type)
+        if match:
+            choices = [choice.strip() for choice in match.group(1).split(',')]
+            
+            # Create a unique key for this field 
+            # For array fields: use array_path.field_path
+            # For non-array fields: use just field_path
+            if array_path and array_path != "non_array":
+                context_key = f"{array_path}.{field_path}"
+            else:
+                context_key = field_path
+            
+            # Add suffix to distinguish choiceOrder from choiceUnique context
+            context_key = f"choiceOrder:{context_key}"
+            
+            # Initialize the index if not exists
+            if context_key not in unique_context:
+                unique_context[context_key] = 0
+            
+            # Get current index
+            current_index = unique_context[context_key]
+            
+            # Select value at current index (with wraparound)
+            selected_value = choices[current_index % len(choices)]
+            
+            # Increment index for next call
+            unique_context[context_key] = current_index + 1
+            
+            return selected_value
+    
     # Handle choiceUnique with context
     if field_type.startswith('choiceUnique(') and unique_context is not None and field_path:
         match = re.match(r'choiceUnique\(\s*([^)]+)\s*\)', field_type)
@@ -473,7 +522,7 @@ def create_record_from_template(base_template: Dict[str, Any],
         index: Record index (0-based)
         sequence_counters: Mutable dictionary tracking sequence field counters
         global_config: Global configuration context
-        unique_context: Shared dictionary tracking used values for uniqueness across all records
+        unique_context: Shared dictionary tracking used values for choiceUnique and indices for choiceOrder across all records
     
     Returns:
         Generated record
@@ -481,7 +530,7 @@ def create_record_from_template(base_template: Dict[str, Any],
     # Start with a deep copy of the base template
     record = deep_copy_template(base_template)
     # print(record.keys())
-    # Initialize unique context for choiceUnique fields if not provided
+    # Initialize unique context for choiceUnique and choiceOrder fields if not provided
     if unique_context is None:
         unique_context = {}
       # Get array lengths configuration
@@ -842,7 +891,7 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
         record: The record to modify
         random_fields: Dictionary of field_name -> field_type specifications
         array_lengths: Dictionary of array_name -> length mappings
-        unique_context: Dictionary tracking used values for choiceUnique fields per array context
+        unique_context: Dictionary tracking used values for choiceUnique fields and indices for choiceOrder fields per array context
     
     Returns:
         Modified record
@@ -858,16 +907,16 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
             array_path, field_suffix = find_array_path_and_suffix(field_name, array_lengths)
             
             if array_path:
-                # This is an array field - check if it's a choiceUnique field
-                if field_type.startswith('choiceUnique('):
-                    # Use unique context functionality for choiceUnique fields
+                # This is an array field - check if it's a choiceUnique or choiceOrder field
+                if field_type.startswith('choiceUnique(') or field_type.startswith('choiceOrder('):
+                    # Use unique context functionality for choiceUnique and choiceOrder fields
                     apply_to_nested_arrays_with_unique_context(record, array_path, field_suffix, field_type, unique_context)
                 else:
                     # Regular array field - apply to all nested array elements with different random values
                     apply_to_nested_arrays(record, array_path, field_suffix, generate_random_value, field_type)
             else:
-                # Regular nested field - check if it's choiceUnique
-                if field_type.startswith('choiceUnique('):
+                # Regular nested field - check if it's choiceUnique or choiceOrder
+                if field_type.startswith('choiceUnique(') or field_type.startswith('choiceOrder('):
                     random_value = generate_random_value_with_context(
                         field_type, unique_context, field_name, "non_array"
                     )
@@ -875,8 +924,8 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
                     random_value = generate_random_value(field_type)
                 set_nested_field(record, field_name, random_value)
         else:
-            # Simple field - check if it's choiceUnique
-            if field_type.startswith('choiceUnique('):
+            # Simple field - check if it's choiceUnique or choiceOrder
+            if field_type.startswith('choiceUnique(') or field_type.startswith('choiceOrder('):
                 random_value = generate_random_value_with_context(
                     field_type, unique_context, field_name, "non_array"
                 )
@@ -1133,15 +1182,15 @@ def get_all_array_field_values(record: Dict[str, Any], array_path: str, field_su
 def apply_to_nested_arrays_with_unique_context(record: Dict[str, Any], array_path: str, field_suffix: str, 
                                               field_type: str, unique_context: Dict[str, set]) -> None:
     """
-    Apply choiceUnique values to nested array elements with uniqueness tracking.
+    Apply choiceUnique or choiceOrder values to nested array elements with context tracking.
     Supports up to 4 levels of nested arrays.
     
     Args:
         record: The record to modify
         array_path: The path to the array (e.g., "Lpn.LpnDetail")
         field_suffix: The field path within each array element
-        field_type: The field type specification (should be choiceUnique)
-        unique_context: Dictionary tracking used values for choiceUnique fields per array context
+        field_type: The field type specification (should be choiceUnique or choiceOrder)
+        unique_context: Dictionary tracking used values for choiceUnique fields and indices for choiceOrder fields per array context
     """
     # Split the array path into parts
     path_parts = array_path.split('.')
@@ -1427,12 +1476,18 @@ def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spe
             if not matching_rows.empty:
                 # Use the first matching row
                 value = matching_rows[column_name].iloc[0]
+                # Convert NaN to None
+                if isinstance(value, float) and math.isnan(value):
+                    value = None
             else:
                 # No match found, could fall back to random or return None
                 value = None
                 
         elif mode == 'random':
             value = get_random_value_from_column(query_name, column_name)
+            # Convert NaN to None
+            if isinstance(value, float) and math.isnan(value):
+                value = None
         elif mode == 'unique':
             # For unique mode, track used values to ensure uniqueness
             if unique_context is None:
@@ -1483,6 +1538,10 @@ def apply_query_context_field(record: Dict[str, Any], field_name: str, query_spe
         else:
             value = get_random_value_from_column(query_name, column_name)
         
+        # Convert NaN to None
+        if pd.isna(value):
+            value = None
+            
         # Apply operation if specified and value is not None
         if value is not None:
             operation = query_spec.get('operation')

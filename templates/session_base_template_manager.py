@@ -68,10 +68,6 @@ class SessionBaseTemplateManager:
         self._ensure_session_initialized()
         st.session_state[self.session_key] = {}
     
-    def reload_examples(self):
-        """Reload example templates from disk, merging with existing session templates"""
-        self._load_examples_to_session()
-    
     def save_template(self, template_name: str, template_content: Any) -> bool:
         """Save template to session memory only"""
         try:
@@ -201,8 +197,3 @@ class SessionBaseTemplateManager:
             info["fields"] = []
         
         return info
-    
-    def clear_all_templates(self):
-        """Clear all templates from session"""
-        self._ensure_session_initialized()
-        st.session_state[self.session_key] = {}

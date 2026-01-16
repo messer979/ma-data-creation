@@ -1,0 +1,8 @@
+{
+    "ActionUrl": "/api/dcinventory/locationCapacityUsage/create",
+    "InheritIsReplenishableFromLocation": true,
+    "ItemId": "",
+    "LocationId": "",
+    "MaxUomQuantity": 100,
+    "MinUomQuantity": 0
+}
