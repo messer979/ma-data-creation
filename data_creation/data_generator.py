@@ -3,22 +3,9 @@ import json
 import traceback
 import requests
 import streamlit as st
-from colorama import Fore, Back, Style, init, just_fix_windows_console
-from termcolor import colored
-# Initialize colorama
-init(autoreset=True)
-just_fix_windows_console()
 
 from data_creation.template_generator import TemplateGenerator
 from templates.session_base_template_manager import SessionBaseTemplateManager
-
-
-
-DEFAULT_API_ENDPOINT = 'https://api.example.com/data'  # Replace with actual endpoint
-DEFAULT_API_HEADERS = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_API_TOKEN'  # Replace with actual token
-}
 
 
 class DataGenerator:
@@ -33,10 +20,6 @@ class DataGenerator:
     
     def load_templates(self):
         """Reload templates from disk into session"""
-        self.base_template_manager.load_templates()
-    
-    def _load_templates(self):
-        """Reload templates from session state (used by template editor reset)"""
         self.base_template_manager.load_templates()
     
     def get_template_generator(self):
@@ -84,8 +67,13 @@ class DataGenerator:
             Dictionary with success status and response details
         """
         try:
-            url = endpoint or DEFAULT_API_ENDPOINT
-            request_headers = headers or DEFAULT_API_HEADERS
+            if not endpoint:
+                raise ValueError("Endpoint URL is required")
+            if not headers:
+                raise ValueError("Request headers are required")
+            
+            url = endpoint
+            request_headers = headers
             
             # Apply payload wrapping logic based on template configuration
             payload = self._wrap_payload(data, template_config)

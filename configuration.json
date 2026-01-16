@@ -78,6 +78,20 @@
       "type":"xint",
       "dataWrapper":true,
       "description": "Customer Order data endpoint"
+    },
+    "location_inventory": {
+      "endpoint": "/dcinventory/api/dcinventory/inventory/adjustInventory",
+      "method": "POST",
+      "type":"array",
+      "dataWrapper":false,
+      "description": "Location Inventory data endpoint"
+    },
+    "location_item_assignment": {
+      "endpoint": "/dmui-facade/api/dmui-facade/view/action/com-manh-cp-dcinventory/LocationItemAssignment/AssignItemToLocation",
+      "method": "POST",
+      "type":"array",
+      "dataWrapper":false,
+      "description": "Location Item Assignment endpoint"
     }
   }
 }

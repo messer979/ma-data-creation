@@ -18,7 +18,7 @@
     "OriginalOrderLine": 1
   },
   "SequenceFields": {
-    "OriginalOrderId": "CM_ORDER"
+    "OriginalOrderId": "OO_{{dttm}}"
   },
   "RandomFields": {
     "CustomerId": "string(10)",

@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import glob
 
-from components.sidebar import render_sidebar
+from components.sidebar import render_sidebar, mark_config_updated
 from templates.session_base_template_manager import SessionBaseTemplateManager
 from templates.bulk_template_manager import BulkTemplateManager
 from data_creation.template_generator import TemplateGenerator
@@ -154,106 +154,232 @@ These templates contain the default field values and structure for different API
 
 
 # Main functionality tabs
-tab1, tab2, tab3 = st.tabs(["📤 Export/Import", "📝 Template Editor", "📊 Template Overview"])
+tab1, tab2, tab3 = st.tabs(["📤 Bulk Export/Import", "📝 Template Editor", "📊 Template Overview"])
 
 with tab1:
-    st.header("📤 Export & Import Templates")
+    st.header("📤 Bulk Export & Import All Templates")
+    st.markdown("Export or import **all base and generation templates** in a single operation.")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📤 Export All Base Templates")
-        st.write(f"Export all {len(template_manager.base_templates)} base templates as a single JSON file.")
+        st.subheader("📤 Export All Templates")
+        st.write("Export **all base and generation templates** as a single comprehensive JSON file.")
         
-        if template_manager.base_templates:
-            json_str, export_data = template_manager.export_all_templates()
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"session_base_templates_export_{timestamp}.json"
-            
+        # Sync any session state changes to template generator before export
+        _sync_session_templates_to_generator(template_generator)
+        
+        # Prepare combined export data
+        combined_export = {
+            "metadata": {
+                "export_date": datetime.now().isoformat(),
+                "export_tool": "RAD Template Management - Bulk Export",
+                "base_template_count": len(template_manager.base_templates),
+                "generation_template_count": len(template_generator.generation_templates),
+                "total_template_count": len(template_manager.base_templates) + len(template_generator.generation_templates)
+            },
+            "base_templates": [],
+            "generation_templates": []
+        }
+        
+        # Add base templates
+        for template_name, template_content in template_manager.base_templates.items():
+            combined_export["base_templates"].append({
+                "name": template_name,
+                "content": template_content
+            })
+        
+        # Add generation templates
+        for template_name, template_content in template_generator.generation_templates.items():
+            combined_export["generation_templates"].append({
+                "name": template_name,
+                "content": template_content
+            })
+        
+        # Convert to JSON string
+        json_str = json.dumps(combined_export, indent=2)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"all_templates_export_{timestamp}.json"
+        
+        if template_manager.base_templates or template_generator.generation_templates:
             st.download_button(
-                label="📥 Download Base Templates Export",
+                label=f"📥 Download All Templates ({combined_export['metadata']['total_template_count']} total)",
                 data=json_str,
                 file_name=filename,
                 mime="application/json",
                 use_container_width=True,
-                help=f"Download all {len(template_manager.base_templates)} base templates from session"
+                type="primary",
+                help=f"Download {combined_export['metadata']['base_template_count']} base + {combined_export['metadata']['generation_template_count']} generation templates"
             )
             
             # Show export preview
             with st.expander("🔍 Export Preview", expanded=False):
-                st.json(export_data["metadata"])
-                st.write("**Templates to export:**")
-                for template in export_data["templates"]:
+                st.json(combined_export["metadata"])
+                st.write(f"**Base Templates ({len(combined_export['base_templates'])}):**")
+                for template in combined_export["base_templates"]:
+                    st.write(f"• {template['name']}")
+                st.write(f"**Generation Templates ({len(combined_export['generation_templates'])}):**")
+                for template in combined_export["generation_templates"]:
                     st.write(f"• {template['name']}")
         else:
             st.info("No templates in session to export")
     
     with col2:
-        st.subheader("📥 Import Base Templates")
-        st.write("Import base templates from a JSON file into your session.")
+        st.subheader("📥 Import All Templates")
+        st.write("Import **base and generation templates** from a comprehensive JSON file.")
         
         # File uploader
         uploaded_file = st.file_uploader(
-            "Choose base templates JSON file", 
+            "Choose templates JSON file", 
             type=['json'],
-            help="Upload a JSON file containing base templates (will be stored in session only)",
-            key="base_template_uploader"
+            help="Upload a JSON file containing both base and generation templates",
+            key="bulk_template_uploader"
         )
         
         if uploaded_file is not None:
             try:
                 # Read the uploaded file
                 content = uploaded_file.read().decode('utf-8')
+                parsed_data = json.loads(content)
                 
-                # Preview the import
-                try:
-                    parsed_preview = json.loads(content)
-                    if "templates" in parsed_preview and isinstance(parsed_preview["templates"], list):
-                        st.info(f"📋 Ready to import {len(parsed_preview['templates'])} templates")
-                        
-                        # Show template names and conflicts
-                        with st.expander("🔍 Preview Templates", expanded=True):
-                            for template in parsed_preview["templates"]:
-                                if isinstance(template, dict) and "name" in template:
-                                    exists = template["name"] in template_manager.base_templates
-                                    status = "⚠️ Will overwrite" if exists else "✅ New"
-                                    st.write(f"• **{template['name']}** {status}")
-                    else:
-                        st.error("Invalid template format - missing 'templates' array")
-                        st.stop()
-                except json.JSONDecodeError:
-                    st.error("Invalid JSON format")
+                # Validate structure
+                has_base = "base_templates" in parsed_data and isinstance(parsed_data["base_templates"], list)
+                has_gen = "generation_templates" in parsed_data and isinstance(parsed_data["generation_templates"], list)
+                
+                if not (has_base or has_gen):
+                    st.error("Invalid format: Must contain 'base_templates' and/or 'generation_templates' arrays")
                     st.stop()
                 
+                base_count = len(parsed_data.get("base_templates", []))
+                gen_count = len(parsed_data.get("generation_templates", []))
+                total_count = base_count + gen_count
+                
+                st.info(f"📋 Ready to import {total_count} templates ({base_count} base + {gen_count} generation)")
+                
+                # Show template preview with conflict detection
+                with st.expander("🔍 Preview Templates", expanded=True):
+                    if has_base and base_count > 0:
+                        st.write("**Base Templates:**")
+                        for template in parsed_data["base_templates"]:
+                            if isinstance(template, dict) and "name" in template:
+                                exists = template["name"] in template_manager.base_templates
+                                status = "⚠️ Will overwrite" if exists else "✅ New"
+                                st.write(f"• **{template['name']}** {status}")
+                    
+                    if has_gen and gen_count > 0:
+                        st.write("**Generation Templates:**")
+                        for template in parsed_data["generation_templates"]:
+                            if isinstance(template, dict) and "name" in template:
+                                exists = template["name"] in template_generator.generation_templates
+                                status = "⚠️ Will overwrite" if exists else "✅ New"
+                                st.write(f"• **{template['name']}** {status}")
+                
                 # Import options
-                overwrite_existing = st.checkbox("Overwrite existing templates", value=True)
+                overwrite_existing = st.checkbox("Overwrite existing templates", value=True, 
+                                                help="If checked, existing templates will be replaced")
                 
                 # Import button
-                if st.button("🔼 Import Templates", use_container_width=True, type="primary"):
+                if st.button("🔼 Import All Templates", use_container_width=True, type="primary"):
                     with st.spinner("Importing templates..."):
-                        success, message, imported, skipped = template_manager.import_templates(
-                            content, overwrite_existing
-                        )
+                        imported_base = []
+                        skipped_base = []
+                        imported_gen = []
+                        skipped_gen = []
+                        errors = []
+                        
+                        # Import base templates
+                        if has_base:
+                            for template_data in parsed_data["base_templates"]:
+                                try:
+                                    if not isinstance(template_data, dict) or "name" not in template_data or "content" not in template_data:
+                                        continue
+                                    
+                                    template_name = template_data["name"]
+                                    template_content = template_data["content"]
+                                    
+                                    # Check if exists and overwrite setting
+                                    if template_name in template_manager.base_templates and not overwrite_existing:
+                                        skipped_base.append(template_name)
+                                        continue
+                                    
+                                    # Save template
+                                    if template_manager.save_template(template_name, template_content):
+                                        imported_base.append(template_name)
+                                    else:
+                                        errors.append(f"Failed to save base template: {template_name}")
+                                except Exception as e:
+                                    errors.append(f"Error importing base template: {str(e)}")
+                        
+                        # Import generation templates
+                        if has_gen:
+                            for template_data in parsed_data["generation_templates"]:
+                                try:
+                                    if not isinstance(template_data, dict) or "name" not in template_data or "content" not in template_data:
+                                        continue
+                                    
+                                    template_name = template_data["name"]
+                                    template_content = template_data["content"]
+                                    
+                                    # Check if exists and overwrite setting
+                                    if template_name in template_generator.generation_templates and not overwrite_existing:
+                                        skipped_gen.append(template_name)
+                                        continue
+                                    
+                                    # Save template to generator
+                                    template_generator.generation_templates[template_name] = template_content
+                                    
+                                    # Sync to session state for editor
+                                    content_key = f"template_content_{template_name}"
+                                    st.session_state[content_key] = json.dumps(template_content, indent=2)
+                                    
+                                    imported_gen.append(template_name)
+                                except Exception as e:
+                                    errors.append(f"Error importing generation template: {str(e)}")
                     
-                    if success:
-                        st.success(f"✅ {message}")
+                    # Show results
+                    total_imported = len(imported_base) + len(imported_gen)
+                    total_skipped = len(skipped_base) + len(skipped_gen)
+                    
+                    if total_imported > 0:
+                        mark_config_updated()
+                        st.success(f"✅ Successfully imported {total_imported} templates ({len(imported_base)} base + {len(imported_gen)} generation)")
                         
-                        if imported:
-                            st.write("**Imported templates:**")
-                            for template_name in imported:
-                                st.write(f"• {template_name}")
+                        if imported_base:
+                            with st.expander("Imported Base Templates"):
+                                for name in imported_base:
+                                    st.write(f"• {name}")
                         
-                        if skipped:
-                            st.write("**Skipped templates:**")
-                            for template_name in skipped:
-                                st.write(f"• {template_name}")
-                          # Refresh the session to show updated templates
+                        if imported_gen:
+                            with st.expander("Imported Generation Templates"):
+                                for name in imported_gen:
+                                    st.write(f"• {name}")
+                    
+                    if total_skipped > 0:
+                        st.warning(f"⚠️ Skipped {total_skipped} existing templates ({len(skipped_base)} base + {len(skipped_gen)} generation)")
+                        
+                        if skipped_base:
+                            with st.expander("Skipped Base Templates"):
+                                for name in skipped_base:
+                                    st.write(f"• {name}")
+                        
+                        if skipped_gen:
+                            with st.expander("Skipped Generation Templates"):
+                                for name in skipped_gen:
+                                    st.write(f"• {name}")
+                    
+                    if errors:
+                        st.error(f"❌ {len(errors)} errors occurred during import")
+                        with st.expander("View Errors"):
+                            for error in errors:
+                                st.write(f"• {error}")
+                    
+                    if total_imported > 0:
                         st.rerun()
-                    else:
-                        st.error(f"❌ {message}")
                         
+            except json.JSONDecodeError as e:
+                st.error(f"Invalid JSON format: {str(e)}")
             except Exception as e:
-                st.error(f"Error reading file: {str(e)}")
+                st.error(f"Error processing file: {str(e)}")
 
 with tab2:
     st.header("📝 Base Template Editor")
@@ -286,6 +412,7 @@ with tab2:
                 if st.button("🗑️ Delete Template", use_container_width=True, type="secondary"):
                     if st.session_state.get(f"confirm_delete_{selected_template}", False):
                         if template_manager.delete_template(selected_template):
+                            mark_config_updated()
                             st.success(f"Template '{selected_template}' deleted from session")
                             st.rerun()
                         else:
@@ -332,6 +459,7 @@ with tab2:
                     new_template_content = json.loads(edited_json)
                       # Save the template to session
                     if template_manager.save_template(selected_template, new_template_content):
+                        mark_config_updated()
                         st.success(f"Template '{selected_template}' saved to session")
                         st.rerun()
                     else:
@@ -371,6 +499,7 @@ with tab2:
                     else:
                         # Create the template in session
                         if template_manager.save_template(new_template_name, parsed_content):
+                            mark_config_updated()
                             st.success(f"Template '{new_template_name}' created in session")
                             st.rerun()
                         else:
@@ -486,127 +615,47 @@ with st.sidebar:
 
 st.markdown("---")
 
-st.markdown("### 📦 Generation Template Management")
+st.markdown("### 📊 Template Statistics")
 
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("Base Templates", len(template_manager.base_templates))
+
+with col2:
+    st.metric("Generation Templates", len(template_generator.generation_templates))
+
+with col3:
+    total_templates = len(template_manager.base_templates) + len(template_generator.generation_templates)
+    st.metric("Total Templates", total_templates)
+
+with col4:
+    st.metric("Storage", "Session Only")
+
+# Quick template lists
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 📤 Export All Generation Templates")
-    st.write(f"Export all {len(template_generator.generation_templates)} generation templates as a single JSON file.")
-    
-    # Sync any session state changes to template generator before export
-    _sync_session_templates_to_generator(template_generator)
-    
-    json_str, export_data = BulkTemplateManager.export_all_templates(template_generator)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"session_generation_templates_export_{timestamp}.json"
-
-    st.download_button(
-        label="📥 Download Generation Templates Export",
-        data=json_str,
-        file_name=filename,
-        mime="application/json",
-        use_container_width=True,
-        help=f"Download all {len(template_generator.generation_templates)} generation templates from session"
-    )
-
+    if template_manager.base_templates:
+        with st.expander("📄 Base Templates List", expanded=False):
+            for template_name in sorted(template_manager.base_templates.keys()):
+                info = template_manager.get_template_info(template_name)
+                st.write(f"• **{template_name}** ({info.get('field_count', 0)} fields)")
+    else:
+        st.info("No base templates loaded")
 
 with col2:
-    st.markdown("### 📤 Import Generation Templates")
-    st.write("Import generation templates from a JSON file into your session.")
-    
-    # File uploader
-    uploaded_file = st.file_uploader(
-        "Choose generation templates JSON file", 
-        type=['json'],
-        help="Upload a JSON file containing generation templates"
-    )
-    if 'last_gen_file' not in st.session_state:
-        st.session_state.last_gen_file = None
-    
-    if uploaded_file is not None:
-        if st.session_state.last_gen_file == uploaded_file.file_id:
-            st.success("File successfully imported!")
-            
-        try:
-            # Read the uploaded file
-            content = uploaded_file.read().decode('utf-8')
-            
-            # Preview the import
-            try:
-                parsed_preview = json.loads(content)
-                if "templates" in parsed_preview and isinstance(parsed_preview["templates"], list):
-                    st.info(f"📋 Ready to import {len(parsed_preview['templates'])} templates")
-                    
-                    # Show template names
-                    with st.expander("🔍 Preview Templates", expanded=False):
-                        for template in parsed_preview["templates"]:
-                            if isinstance(template, dict) and "name" in template:
-                                exists = template["name"] in template_generator.generation_templates
-                                status = "⚠️ Exists" if exists else "✅ New"
-                                st.write(f"• {template['name']} {status}")
-                else:
-                    st.error("Invalid template format")
-                    st.stop()
-            except json.JSONDecodeError:
-                st.error("Invalid JSON format")
-                st.stop()
-            
-            # Import button
-            if st.button("🔼 Import Templates", use_container_width=True):
-                success, message, imported, skipped = BulkTemplateManager.import_all_templates(
-                    template_generator, content
-                )
-                
-                if success:
-                    st.session_state.last_gen_file = uploaded_file.file_id
-                    
-                    # Sync imported templates to session state
-                    _sync_generator_to_session_templates(template_generator)
-                    
-                    if imported:
-                        st.rerun()
-                else:
-                    st.error(f"❌ {message}")
-                    
-        except Exception as e:
-            st.error(f"Error reading file: {str(e)}")
+    if template_generator.generation_templates:
+        with st.expander("📝 Generation Templates List", expanded=False):
+            for template_name in sorted(template_generator.generation_templates.keys()):
+                template = template_generator.generation_templates[template_name]
+                field_count = 0
+                if isinstance(template, dict):
+                    field_count += len(template.get("StaticFields", {}))
+                    field_count += len(template.get("SequenceFields", {}))
+                    field_count += len(template.get("RandomFields", {}))
+                    field_count += len(template.get("LinkedFields", {}))
+                st.write(f"• **{template_name}** ({field_count} fields)")
+    else:
+        st.info("No generation templates loaded")
 
-st.markdown("---")
-st.markdown("### 📊 Generation Templates")
-
-if template_generator.generation_templates:
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Templates", len(template_generator.generation_templates))
-    
-    with col2:
-        # Calculate total fields across all templates
-        total_fields = 0
-        for template in template_generator.generation_templates.values():
-            if isinstance(template, dict):
-                total_fields += len(template.get("StaticFields", {}))
-                total_fields += len(template.get("SequenceFields", {}))
-                total_fields += len(template.get("RandomFields", []))
-                total_fields += len(template.get("LinkedFields", {}))
-        st.metric("Total Fields", total_fields)
-    
-    with col3:
-        # Show session status
-        st.metric("Storage", "Session Only")
-    
-    # List all templates
-    with st.expander("📝 Template List", expanded=False):
-        for template_name in sorted(template_generator.generation_templates.keys()):
-            template = template_generator.generation_templates[template_name]
-            field_count = 0
-            if isinstance(template, dict):
-                field_count += len(template.get("StaticFields", {}))
-                field_count += len(template.get("SequenceFields", {}))
-                field_count += len(template.get("RandomFields", []))
-                field_count += len(template.get("LinkedFields", {}))
-            
-            st.write(f"• **{template_name}** ({field_count} fields)")
-else:
-    st.info("No generation templates currently loaded in session.")
