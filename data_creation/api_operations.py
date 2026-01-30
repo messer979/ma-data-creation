@@ -105,13 +105,25 @@ def display_api_results(api_results: List[Dict]):
                             # Toggle switch for response view
                             show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"response_view_{result['batch']}")
                             
+                            # Check if response is valid JSON (dict/list) or plain text
+                            response_data = batch_info['response']
+                            is_json_object = isinstance(response_data, (dict, list))
+                            
                             if show_as_code:
-                                # Format and display the JSON response as code
+                                # Format and display the response as code
                                 import json
-                                st.code(json.dumps(batch_info['response'], indent=2), language='json')
+                                if is_json_object:
+                                    st.code(json.dumps(response_data, indent=2), language='json')
+                                else:
+                                    # Plain text response
+                                    st.code(str(response_data), language='text')
                             else:
-                                # Display as interactive JSON tree (default)
-                                st.json(batch_info['response'])
+                                # Display as interactive JSON tree if it's a dict/list, otherwise as text
+                                if is_json_object:
+                                    st.json(response_data)
+                                else:
+                                    # Plain text response - display in a code block
+                                    st.code(str(response_data), language='text')
                     else:
                         st.info("No response body returned")
                 else:
@@ -158,13 +170,25 @@ def display_api_results(api_results: List[Dict]):
                             # Toggle switch for response view
                             show_as_code = st.toggle("Show as Code", value=False, help="Toggle between JSON tree view and code view", key=f"error_response_view_{result['batch']}")
                             
+                            # Check if response is valid JSON (dict/list) or plain text
+                            response_data = batch_info['response']
+                            is_json_object = isinstance(response_data, (dict, list))
+                            
                             if show_as_code:
-                                # Format and display the JSON response as code
+                                # Format and display the response as code
                                 import json
-                                st.code(json.dumps(batch_info['response'], indent=2), language='json')
+                                if is_json_object:
+                                    st.code(json.dumps(response_data, indent=2), language='json')
+                                else:
+                                    # Plain text response
+                                    st.code(str(response_data), language='text')
                             else:
-                                # Display as interactive JSON tree (default)
-                                st.json(batch_info['response'])
+                                # Display as interactive JSON tree if it's a dict/list, otherwise as text
+                                if is_json_object:
+                                    st.json(response_data)
+                                else:
+                                    # Plain text response - display in a code block
+                                    st.code(str(response_data), language='text')
                     elif 'response' in batch_info:
                         st.info("No response body returned")
                     else:

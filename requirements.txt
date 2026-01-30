@@ -7,6 +7,7 @@ requests
 celery
 redis
 flask
+flask-cors
 faker
 python-dotenv
 termcolor

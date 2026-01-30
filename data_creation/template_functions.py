@@ -42,8 +42,90 @@ def apply_static_fields(record: Dict[str, Any], static_fields: Dict[str, Any]) -
     return record
 
 
+def process_substr_function(value: str, record: Dict[str, Any]) -> str:
+    """
+    Process substr() function calls in string values.
+    Supports: substr({{FieldName}}, start, length)
+    
+    Args:
+        value: String value that may contain substr() function calls
+        record: The record to look up field values from
+    
+    Returns:
+        String with substr() calls processed
+    """
+    if not isinstance(value, str):
+        return value
+    
+    # Pattern to match substr({{FieldName}}, start, length)
+    # Matches: substr({{FieldName}}, 0, 17) or substr({{FieldName}},0,17)
+    pattern = r'substr\(\{\{([^}]+)\}\},\s*(\d+),\s*(\d+)\)'
+    
+    def replace_substr(match):
+        field_name = match.group(1).strip()
+        start_pos = int(match.group(2))
+        length = int(match.group(3))
+        
+        # Get the field value from the record
+        field_value = get_nested_field(record, field_name)
+        if field_value is not None:
+            field_str = str(field_value)
+            # Extract substring (start position, length)
+            # Python string slicing: [start:start+length]
+            if start_pos < len(field_str):
+                substr_value = field_str[start_pos:start_pos + length]
+                return substr_value
+            else:
+                # Start position beyond string length, return empty
+                return ""
+        else:
+            # Field not found, return original pattern
+            return match.group(0)
+    
+    # Replace all substr() calls
+    resolved = re.sub(pattern, replace_substr, value)
+    
+    return resolved
+
+
+def resolve_attribute_references(value: str, record: Dict[str, Any]) -> str:
+    """
+    Resolve {{FieldName}} references in a string value by looking up field values from the record.
+    ENHANCEMENT 3: Support attribute value references.
+    ENHANCEMENT 5: Support substr() function for extracting parts of attribute values.
+    
+    Args:
+        value: String value that may contain {{FieldName}} patterns or substr() calls
+        record: The record to look up field values from
+    
+    Returns:
+        String with {{FieldName}} patterns and substr() calls replaced by actual values
+    """
+    if not isinstance(value, str):
+        return value
+    
+    # First, process substr() functions (they contain {{FieldName}} inside, so process them first)
+    # substr() will extract the substring, then we process remaining {{FieldName}} patterns
+    value = process_substr_function(value, record)
+    
+    # Then, find all remaining {{FieldName}} patterns (not inside substr calls, which are now processed)
+    pattern = r'\{\{([^}]+)\}\}'
+    matches = re.findall(pattern, value)
+    
+    resolved = value
+    for field_name in matches:
+        # Get the field value from the record
+        field_value = get_nested_field(record, field_name.strip())
+        if field_value is not None:
+            # Replace {{FieldName}} with actual value
+            resolved = resolved.replace(f'{{{{{field_name}}}}}', str(field_value))
+        # If field not found, leave the pattern as-is (could raise error or handle differently)
+    
+    return resolved
+
+
 def process_dynamic_field_keywords(prefix: str, generation_time: str) -> str:
-    """Process keyword variables in dynamic field prefixes (e.g., {{dttm}})."""
+    """Process keyword variables in dynamic field prefixes (e.g., {{dttm}}, {{dt}})."""
     processed = prefix
     if '{{dttm}}' in processed:
         generation_time_str = generation_time.strftime('%m%d%H%M%S')
@@ -157,10 +239,11 @@ def set_nested_field(obj: Dict[str, Any], field_path: str, value: Any) -> None:
 def get_nested_field(obj: Dict[str, Any], field_path: str) -> Any:
     """
     Get a nested field using dot notation
+    Supports arrays by checking if a part is a list and accessing the first element
     
     Args:
         obj: Object to read from
-        field_path: Dot notation path (e.g., "AsnLine.ItemId")
+        field_path: Dot notation path (e.g., "AsnLine.ItemId" or "Lpn.LpnId" where Lpn is an array)
     
     Returns:
         Field value or None if not found
@@ -168,11 +251,24 @@ def get_nested_field(obj: Dict[str, Any], field_path: str) -> Any:
     parts = field_path.split('.')
     current = obj
     
-    for part in parts:
-        # Handle dictionary key access only
-        if not isinstance(current, dict) or part not in current:
+    for i, part in enumerate(parts):
+        if isinstance(current, dict):
+            if part not in current:
+                return None
+            current = current[part]
+        elif isinstance(current, list):
+            # ENHANCEMENT 5: If current is a list, access the first element and continue with the part
+            # This handles cases like "Lpn.LpnId" where Lpn is an array [LpnElement]
+            # We access Lpn[0], then look for "LpnId" in that element
+            if len(current) > 0 and isinstance(current[0], dict):
+                if part in current[0]:
+                    current = current[0][part]
+                else:
+                    return None
+            else:
+                return None
+        else:
             return None
-        current = current[part]
     
     return current
 
@@ -416,12 +512,13 @@ def deep_copy_template(obj: Any) -> Any:
         return obj
 
 
-def parse_array_length_value(value) -> int:
+def parse_array_length_value(value, choice_order_context: Dict[str, int] = None) -> int:
     """
-    Parse array length value, supporting both static integers and random int() expressions
+    Parse array length value, supporting static integers, random int() expressions, and choiceOrder()
     
     Args:
-        value: The array length value - can be an integer or string like "int(1,10)"
+        value: The array length value - can be an integer, "int(1,10)", or "choiceOrder(50,20,10)"
+        choice_order_context: Mutable dictionary tracking indices for choiceOrder arrays
     
     Returns:
         Resolved integer length
@@ -430,8 +527,37 @@ def parse_array_length_value(value) -> int:
         return value
     
     if isinstance(value, str):
+        value = value.strip()
+        
+        # Check for choiceOrder(pattern) - ENHANCEMENT 2
+        choice_order_match = re.match(r'choiceOrder\(\s*([^)]+)\s*\)', value)
+        if choice_order_match:
+            if choice_order_context is None:
+                choice_order_context = {}
+            
+            choices_str = choice_order_match.group(1)
+            choices = [int(choice.strip()) for choice in choices_str.split(',')]
+            
+            # Use a context key based on the value string itself
+            context_key = f"array_length_{value}"
+            
+            # Initialize index if not exists
+            if context_key not in choice_order_context:
+                choice_order_context[context_key] = 0
+            
+            # Get current index
+            current_index = choice_order_context[context_key]
+            
+            # Select value at current index (with wraparound)
+            selected_value = choices[current_index % len(choices)]
+            
+            # Increment index for next call
+            choice_order_context[context_key] = current_index + 1
+            
+            return selected_value
+        
         # Check for int(min,max) pattern
-        match = re.match(r'int\(\s*(\d+)\s*,\s*(\d+)\s*\)', value.strip())
+        match = re.match(r'int\(\s*(\d+)\s*,\s*(\d+)\s*\)', value)
         if match:
             min_val, max_val = int(match.group(1)), int(match.group(2))
             return random.randint(min_val, max_val)
@@ -440,7 +566,7 @@ def parse_array_length_value(value) -> int:
         try:
             return int(value)
         except ValueError:
-            raise ValueError(f"Invalid array length value: {value}. Must be an integer or 'int(min,max)' format.")
+            raise ValueError(f"Invalid array length value: {value}. Must be an integer, 'int(min,max)', or 'choiceOrder(...)' format.")
     
     raise ValueError(f"Invalid array length value type: {type(value)}. Must be an integer or string.")
 
@@ -512,7 +638,8 @@ def create_record_from_template(base_template: Dict[str, Any],
                               index: int,
                               sequence_counters: Dict[str, int],
                               global_config: Dict[str, Any],
-                              unique_context: Dict[str, set] = None) -> Dict[str, Any]:
+                              unique_context: Dict[str, set] = None,
+                              array_length_choice_context: Dict[str, int] = None) -> Dict[str, Any]:
     """
     Create a single record by applying generation template rules to base template
     
@@ -535,10 +662,13 @@ def create_record_from_template(base_template: Dict[str, Any],
         unique_context = {}
       # Get array lengths configuration
     array_lengths = generation_template.get('ArrayLengths', {})
-      # Initialize arrays to the specified lengths before processing fields
+    # ENHANCEMENT 2: Use shared context for choiceOrder array lengths (or create new if not provided)
+    if array_length_choice_context is None:
+        array_length_choice_context = {}
+    # Initialize arrays to the specified lengths before processing fields
     for array_name, array_length_value in array_lengths.items():
-        # Parse the array length value (supports both integers and random int() expressions)
-        array_length = parse_array_length_value(array_length_value)
+        # Parse the array length value (supports integers, int(min,max), and choiceOrder(...))
+        array_length = parse_array_length_value(array_length_value, array_length_choice_context)
         
         if '.' in array_name:
             # Handle nested arrays (e.g., "Lpn.LpnDetail")
@@ -734,23 +864,33 @@ def apply_static_fields_with_arrays(record: Dict[str, Any],
                                    array_lengths: Dict[str, int]) -> Dict[str, Any]:
     """
     Apply static field values to a record, handling multi-level array fields by iterating over array elements
+    ENHANCEMENT 5: Supports substr() function and {{FieldName}} attribute references in static values
     
     Args:
         record: The record to modify
-        static_fields: Dictionary of field_name -> static_value
+        static_fields: Dictionary of field_name -> static_value (supports substr() and {{FieldName}})
         array_lengths: Dictionary of array_name -> length mappings
     
     Returns:
         Modified record
     """
     for field, value in static_fields.items():
+        # ENHANCEMENT 5: Process substr() and {{FieldName}} in static values
+        if isinstance(value, str):
+            value = resolve_attribute_references(value, record)
+        
         if '.' in field:
             # Check if this field references any array (including nested arrays)
             array_path, field_suffix = find_array_path_and_suffix(field, array_lengths)
             
             if array_path:
                 # This is an array field - apply to all nested array elements
-                apply_to_nested_arrays(record, array_path, field_suffix, lambda: value)
+                # For array fields, resolve references per element
+                def get_value_with_refs():
+                    if isinstance(value, str):
+                        return resolve_attribute_references(value, record)
+                    return value
+                apply_to_nested_arrays(record, array_path, field_suffix, get_value_with_refs)
             else:
                 # Regular nested field
                 set_nested_field(record, field, value)
@@ -768,10 +908,11 @@ def apply_sequence_fields_with_arrays(record: Dict[str, Any],
                                    global_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Apply sequence field values to a record, handling multi-level array fields by iterating over array elements
+    ENHANCEMENT 1 & 3 & 5: Supports * suffix to exclude underscore, {{FieldName}} attribute references, and substr() function
     
     Args:
         record: The record to modify
-        sequence_fields: Dictionary of field_name -> prefix
+        sequence_fields: Dictionary of field_name -> prefix (supports * suffix, {{FieldName}}, and substr())
         sequence_counters: Mutable dictionary tracking counters for each field
         array_lengths: Dictionary of array_name -> length mappings
     
@@ -779,21 +920,85 @@ def apply_sequence_fields_with_arrays(record: Dict[str, Any],
         Modified record
     """
     for field, prefix in sequence_fields.items():
-        # Process keyword variables in prefix
-        processed_prefix = process_dynamic_field_keywords(prefix, global_config['generation_time'])
+        # ENHANCEMENT 1: Check for * suffix to exclude underscore BEFORE processing
+        # This allows substr() to work correctly with * suffix
+        use_underscore = True
+        original_prefix = prefix
+        if prefix.endswith('*'):
+            original_prefix = prefix[:-1]  # Store without * for re-resolution
+            prefix = prefix[:-1]  # Remove * for processing
+            use_underscore = False
+        
+        # ENHANCEMENT 3 & 5: Resolve attribute references and substr() functions (e.g., {{AsnId}}, substr({{Lpn.LpnId}},0,17))
+        # Note: This may need the referenced field to already be set in the record
+        prefix_with_refs = resolve_attribute_references(prefix, record)
+        
+        # Process keyword variables in prefix ({{dt}}, {{dttm}})
+        processed_prefix = process_dynamic_field_keywords(prefix_with_refs, global_config['generation_time'])
         
         if '.' in field:
             # Check if this field references any array (including nested arrays)
             array_path, field_suffix = find_array_path_and_suffix(field, array_lengths)
             
             if array_path:
-                # This is an array field - apply per-element indexing for nested arrays
-                def generate_dynamic_value_for_element():
-                    # For array elements, use sequential indexing within this record
-                    # We'll track the index during application
-                    return None  # Placeholder, actual value set in apply_to_nested_arrays_with_index
+                # This is an array field - use global sequence counter to ensure uniqueness across all records
+                # For sequence fields in arrays, we increment the counter for each array element
+                # This ensures uniqueness both within a record and across records
                 
-                apply_to_nested_arrays_with_index(record, array_path, field_suffix, processed_prefix)
+                # Get array length from the record (arrays are already expanded at this point)
+                # Navigate to the array using the array_path
+                array_length = None
+                path_parts = array_path.split('.')
+                current_obj = record
+                
+                # Navigate through the path to find the array
+                for i, part in enumerate(path_parts):
+                    if isinstance(current_obj, dict) and part in current_obj:
+                        current_obj = current_obj[part]
+                        if isinstance(current_obj, list) and i == len(path_parts) - 1:
+                            # Found the target array
+                            array_length = len(current_obj)
+                            break
+                    elif isinstance(current_obj, list) and len(current_obj) > 0:
+                        # Current level is an array, navigate into first element
+                        if isinstance(current_obj[0], dict) and part in current_obj[0]:
+                            current_obj = current_obj[0][part]
+                            if isinstance(current_obj, list) and i == len(path_parts) - 1:
+                                # Found the target array
+                                array_length = len(current_obj)
+                                break
+                        else:
+                            break
+                    else:
+                        break
+                
+                # If we couldn't find the array in the record, try to parse from array_lengths config
+                if array_length is None:
+                    array_length_value = array_lengths.get(array_path)
+                    if array_length_value is not None:
+                        # Parse array length from config (supports int, "int(min,max)", "choiceOrder(...)")
+                        # Note: For choiceOrder, we'll use a default context (may not be perfect but better than failing)
+                        from data_creation.template_functions import parse_array_length_value
+                        array_length = parse_array_length_value(array_length_value, {})
+                    else:
+                        array_length = 1  # Default fallback
+                
+                # Get the starting counter value (before incrementing)
+                if field not in sequence_counters:
+                    starting_counter = 1
+                else:
+                    starting_counter = sequence_counters[field] + 1
+                
+                # Calculate final counter value after processing all array elements
+                final_counter_value = starting_counter + array_length - 1
+                
+                # For array fields, we need to resolve attribute references per element since
+                # the referenced field (e.g., Lpn.LpnId) might be in the same array structure
+                # So we'll resolve it dynamically for each element using original_prefix (without *)
+                apply_to_nested_arrays_with_sequence_counter(record, array_path, field_suffix, processed_prefix, use_underscore, original_prefix, record, global_config, sequence_counters, field, starting_counter)
+                
+                # Update the counter to reflect the final value after processing all array elements
+                sequence_counters[field] = final_counter_value
             else:
                 # Regular nested field - use global counter
                 if field not in sequence_counters:
@@ -801,7 +1006,11 @@ def apply_sequence_fields_with_arrays(record: Dict[str, Any],
                 else:
                     sequence_counters[field] += 1
                 
-                generated_value = f"{processed_prefix}_{sequence_counters[field]:03d}"
+                # ENHANCEMENT 1: Format with or without underscore
+                if use_underscore:
+                    generated_value = f"{processed_prefix}_{sequence_counters[field]:03d}"
+                else:
+                    generated_value = f"{processed_prefix}{sequence_counters[field]:03d}"
                 set_nested_field(record, field, generated_value)
         else:
             # Simple field - use global counter
@@ -810,23 +1019,134 @@ def apply_sequence_fields_with_arrays(record: Dict[str, Any],
             else:
                 sequence_counters[field] += 1
             
-            generated_value = f"{processed_prefix}_{sequence_counters[field]:03d}"
+            # ENHANCEMENT 1: Format with or without underscore
+            if use_underscore:
+                generated_value = f"{processed_prefix}_{sequence_counters[field]:03d}"
+            else:
+                generated_value = f"{processed_prefix}{sequence_counters[field]:03d}"
             set_nested_field(record, field, generated_value)
     
     return record
 
 
+def apply_to_nested_arrays_with_sequence_counter(record: Dict[str, Any], array_path: str, field_suffix: str, 
+                                     prefix: str, use_underscore: bool = True, 
+                                     original_prefix: str = None, full_record: Dict[str, Any] = None,
+                                     global_config: Dict[str, Any] = None, 
+                                     sequence_counters: Dict[str, int] = None, 
+                                     field_name: str = None, starting_counter: int = 1) -> None:
+    """
+    Apply sequence field values to nested array elements using a global sequence counter.
+    This ensures sequence fields in arrays increment globally across all records,
+    with each array element getting a unique sequence number.
+    
+    Args:
+        record: The record to modify
+        array_path: The path to the array (e.g., "Lpn" or "Lpn.LpnDetail")
+        field_suffix: The field path within each array element (e.g., "LpnId" or "Extended.OriginalNDCLpnId")
+        prefix: The prefix for generating dynamic values (may already be processed with substr())
+        use_underscore: If True, use format "{prefix}_{counter:03d}", else "{prefix}{counter:03d}"
+        original_prefix: Original prefix template (for re-resolution with attribute references)
+        full_record: Full record context for resolving attribute references
+        global_config: Global configuration for processing dynamic keywords
+        sequence_counters: Mutable dictionary tracking counters (will be incremented per element)
+        field_name: The full field name (e.g., "Lpn.LpnId") for counter tracking
+        starting_counter: The starting counter value for the first element
+    """
+    current_counter = starting_counter
+    
+    def navigate_and_apply_with_counter(current_obj, parts_remaining, depth=0):
+        nonlocal current_counter
+        if depth > 4:  # Safety limit for recursion
+            return
+            
+        if len(parts_remaining) == 1:
+            # We're at the parent of the final array - navigate to the array itself
+            final_array_name = parts_remaining[0]
+            if isinstance(current_obj, dict) and final_array_name in current_obj:
+                final_array = current_obj[final_array_name]
+                if isinstance(final_array, list):
+                    # Apply unique counter value to each element in the array
+                    for i, element in enumerate(final_array):
+                        if isinstance(element, dict):
+                            # ENHANCEMENT 5: Re-resolve attribute references for this element
+                            element_prefix = prefix
+                            if original_prefix and full_record and global_config:
+                                # Re-resolve for this element's context
+                                element_prefix = resolve_attribute_references(original_prefix, full_record)
+                                element_prefix = process_dynamic_field_keywords(element_prefix, global_config.get('generation_time'))
+                            
+                            # Use the current counter value and increment for next element
+                            # ENHANCEMENT 1: Format with or without underscore
+                            if use_underscore:
+                                element_value = f"{element_prefix}_{current_counter:03d}"
+                            else:
+                                element_value = f"{element_prefix}{current_counter:03d}"
+                            set_nested_field(element, field_suffix, element_value)
+                            
+                            # Increment counter for next element (if any)
+                            current_counter += 1
+            elif isinstance(current_obj, list):
+                # Current object is an array, apply to final array in each element
+                for element in current_obj:
+                    if isinstance(element, dict) and final_array_name in element:
+                        final_array = element[final_array_name]
+                        if isinstance(final_array, list):
+                            for i, sub_element in enumerate(final_array):
+                                if isinstance(sub_element, dict):
+                                    # ENHANCEMENT 5: Re-resolve for nested array elements too
+                                    element_prefix = prefix
+                                    if original_prefix and full_record and global_config:
+                                        element_prefix = resolve_attribute_references(original_prefix, full_record)
+                                        element_prefix = process_dynamic_field_keywords(element_prefix, global_config.get('generation_time'))
+                                    
+                                    # Use the current counter value and increment for next element
+                                    # ENHANCEMENT 1: Format with or without underscore
+                                    if use_underscore:
+                                        element_value = f"{element_prefix}_{current_counter:03d}"
+                                    else:
+                                        element_value = f"{element_prefix}{current_counter:03d}"
+                                    set_nested_field(sub_element, field_suffix, element_value)
+                                    
+                                    # Increment counter for next element (if any)
+                                    current_counter += 1
+            return
+        
+        # Navigate to the next level (not the final array yet)
+        next_part = parts_remaining[0]
+        remaining_parts = parts_remaining[1:]
+        
+        if isinstance(current_obj, dict) and next_part in current_obj:
+            current_level = current_obj[next_part]
+            if isinstance(current_level, list):
+                # Current level is an array, iterate through its elements
+                for i, element in enumerate(current_level):
+                    if isinstance(element, dict):
+                        navigate_and_apply_with_counter(element, remaining_parts, depth + 1)
+            else:
+                # Current level is a single object
+                navigate_and_apply_with_counter(current_level, remaining_parts, depth + 1)
+    
+    # Start navigation from the record
+    navigate_and_apply_with_counter(record, array_path.split('.'))
+
+
 def apply_to_nested_arrays_with_index(record: Dict[str, Any], array_path: str, field_suffix: str, 
-                                     prefix: str) -> None:
+                                     prefix: str, use_underscore: bool = True, 
+                                     original_prefix: str = None, full_record: Dict[str, Any] = None,
+                                     global_config: Dict[str, Any] = None) -> None:
     """
     Apply dynamic values to nested array elements with per-element indexing.
     Supports up to 4 levels of nested arrays.
+    ENHANCEMENT 1: Supports use_underscore parameter to control underscore in sequence numbers.
+    ENHANCEMENT 5: Prefix may already contain resolved substr() values, so use it directly.
     
     Args:
         record: The record to modify
         array_path: The path to the array (e.g., "Lpn.LpnDetail")
         field_suffix: The field path within each array element
-        prefix: The prefix for generating dynamic values
+        prefix: The prefix for generating dynamic values (may already be processed with substr())
+        use_underscore: If True, use format "{prefix}_{index:03d}", else "{prefix}{index:03d}"
     """
     # Split the array path into parts
     path_parts = array_path.split('.')
@@ -844,9 +1164,29 @@ def apply_to_nested_arrays_with_index(record: Dict[str, Any], array_path: str, f
                     # Apply to all elements in the final array
                     for i, element in enumerate(final_array):
                         if isinstance(element, dict):
+                            # ENHANCEMENT 5: If original_prefix contains substr() or {{FieldName}}, 
+                            # resolve it for this specific element using the full record context
+                            # For Lpn.LpnDetail fields, we need to resolve Lpn.LpnId from the parent Lpn element
+                            element_prefix = prefix
+                            if original_prefix and full_record and global_config:
+                                # When processing Lpn.LpnDetail fields, current_obj is the Lpn element
+                                # We need to create a context where Lpn.LpnId can be resolved
+                                # The full_record already has Lpn[0].LpnId set from earlier sequence field processing
+                                # So we can use full_record directly - get_nested_field handles arrays
+                                resolution_context = full_record
+                                
+                                # Re-resolve attribute references for this element's context
+                                # get_nested_field will correctly access Lpn[0].LpnId when resolving {{Lpn.LpnId}}
+                                element_prefix = resolve_attribute_references(original_prefix, resolution_context)
+                                element_prefix = process_dynamic_field_keywords(element_prefix, global_config.get('generation_time'))
+                            
                             # Use 1-based indexing for the element
                             element_index = i + 1
-                            element_value = f"{prefix}_{element_index:03d}"
+                            # ENHANCEMENT 1: Format with or without underscore
+                            if use_underscore:
+                                element_value = f"{element_prefix}_{element_index:03d}"
+                            else:
+                                element_value = f"{element_prefix}{element_index:03d}"
                             set_nested_field(element, field_suffix, element_value)
             elif isinstance(current_obj, list):
                 # Current object is an array, apply to final array in each element
@@ -856,8 +1196,18 @@ def apply_to_nested_arrays_with_index(record: Dict[str, Any], array_path: str, f
                         if isinstance(final_array, list):
                             for i, sub_element in enumerate(final_array):
                                 if isinstance(sub_element, dict):
+                                    # ENHANCEMENT 5: Re-resolve for nested array elements too
+                                    element_prefix = prefix
+                                    if original_prefix and full_record and global_config:
+                                        element_prefix = resolve_attribute_references(original_prefix, full_record)
+                                        element_prefix = process_dynamic_field_keywords(element_prefix, global_config.get('generation_time'))
+                                    
                                     element_index = i + 1
-                                    element_value = f"{prefix}_{element_index:03d}"
+                                    # ENHANCEMENT 1: Format with or without underscore
+                                    if use_underscore:
+                                        element_value = f"{element_prefix}_{element_index:03d}"
+                                    else:
+                                        element_value = f"{element_prefix}{element_index:03d}"
                                     set_nested_field(sub_element, field_suffix, element_value)
             return
         
@@ -886,10 +1236,11 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
                                   unique_context: Dict[str, set] = None) -> Dict[str, Any]:
     """
     Apply random field values to a record, handling multi-level array fields by iterating over array elements
+    ENHANCEMENT 3: Supports {{FieldName}} attribute references in field_type values
     
     Args:
         record: The record to modify
-        random_fields: Dictionary of field_name -> field_type specifications
+        random_fields: Dictionary of field_name -> field_type specifications (may contain {{FieldName}})
         array_lengths: Dictionary of array_name -> length mappings
         unique_context: Dictionary tracking used values for choiceUnique fields and indices for choiceOrder fields per array context
     
@@ -901,6 +1252,8 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
         unique_context = {}
     
     for field_name, field_type in random_fields.items():
+        # ENHANCEMENT 3: Resolve attribute references in field_type (e.g., "{{AsnId}}_SUFFIX")
+        field_type_with_refs = resolve_attribute_references(field_type, record)
         
         if '.' in field_name:
             # Check if this field references any array (including nested arrays)
@@ -908,29 +1261,29 @@ def apply_random_fields_with_arrays(record: Dict[str, Any],
             
             if array_path:
                 # This is an array field - check if it's a choiceUnique or choiceOrder field
-                if field_type.startswith('choiceUnique(') or field_type.startswith('choiceOrder('):
+                if field_type_with_refs.startswith('choiceUnique(') or field_type_with_refs.startswith('choiceOrder('):
                     # Use unique context functionality for choiceUnique and choiceOrder fields
-                    apply_to_nested_arrays_with_unique_context(record, array_path, field_suffix, field_type, unique_context)
+                    apply_to_nested_arrays_with_unique_context(record, array_path, field_suffix, field_type_with_refs, unique_context)
                 else:
                     # Regular array field - apply to all nested array elements with different random values
-                    apply_to_nested_arrays(record, array_path, field_suffix, generate_random_value, field_type)
+                    apply_to_nested_arrays(record, array_path, field_suffix, generate_random_value, field_type_with_refs)
             else:
                 # Regular nested field - check if it's choiceUnique or choiceOrder
-                if field_type.startswith('choiceUnique(') or field_type.startswith('choiceOrder('):
+                if field_type_with_refs.startswith('choiceUnique(') or field_type_with_refs.startswith('choiceOrder('):
                     random_value = generate_random_value_with_context(
-                        field_type, unique_context, field_name, "non_array"
+                        field_type_with_refs, unique_context, field_name, "non_array"
                     )
                 else:
-                    random_value = generate_random_value(field_type)
+                    random_value = generate_random_value(field_type_with_refs)
                 set_nested_field(record, field_name, random_value)
         else:
             # Simple field - check if it's choiceUnique or choiceOrder
-            if field_type.startswith('choiceUnique(') or field_type.startswith('choiceOrder('):
+            if field_type_with_refs.startswith('choiceUnique(') or field_type_with_refs.startswith('choiceOrder('):
                 random_value = generate_random_value_with_context(
-                    field_type, unique_context, field_name, "non_array"
+                    field_type_with_refs, unique_context, field_name, "non_array"
                 )
             else:
-                random_value = generate_random_value(field_type)
+                random_value = generate_random_value(field_type_with_refs)
             set_nested_field(record, field_name, random_value)
     
     return record

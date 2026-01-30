@@ -94,7 +94,7 @@ def main():
     send_to_api, batch_size = render_api_options()
     
     # Generate button with separated logic
-    col1, col2, col3 = st.columns([2, 2, 6])
+    col1, col2, col3, col4 = st.columns([2, 2, 1, 5])
     
     with col1:
         if st.button("🚀 Generate Data", type="primary"):
@@ -128,8 +128,27 @@ def main():
             st.success("✅ Results cleared!")
             st.rerun()
     
-    # Empty column for spacing
     with col3:
+        # Sequence Values button (only show if persistent counters enabled)
+        from components.sequence_counter_ui import render_sequence_values_modal
+        from data_creation.sequence_counter_manager import SequenceCounterManager
+        
+        counter_manager = SequenceCounterManager(use_streamlit=True)
+        if counter_manager.is_enabled():
+            if st.button("🔢 Sequence Values", help="View current sequence counter values", use_container_width=True):
+                st.session_state['show_sequence_values'] = True
+                st.rerun()
+        
+        # Show sequence values modal if requested
+        if st.session_state.get('show_sequence_values', False):
+            with st.popover("🔢 Sequence Counter Values", use_container_width=True):
+                render_sequence_values_modal(selected_template)
+                if st.button("Close"):
+                    st.session_state['show_sequence_values'] = False
+                    st.rerun()
+    
+    # Empty column for spacing
+    with col4:
         pass      # Results panel at the bottom
     st.markdown("---")
     render_results_panel()

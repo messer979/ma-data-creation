@@ -1,0 +1,836 @@
+{
+	"info": {
+		"_postman_id": "data-generation-api-collection",
+		"name": "Data Generation API",
+		"description": "Collection for testing the Data Generation API service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Check API health and get template counts"
+			},
+			"response": []
+		},
+		{
+			"name": "List Templates",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/templates",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"templates"
+					]
+				},
+				"description": "List all available base and generation templates"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Base Template",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/templates/base/ndc_asn_cas",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"templates",
+						"base",
+						"ndc_asn_cas"
+					]
+				},
+				"description": "Get a specific base template by name"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Generation Template",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/templates/generation/ndc_asn_cas",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"templates",
+						"generation",
+						"ndc_asn_cas"
+					]
+				},
+				"description": "Get a specific generation template by name"
+			},
+			"response": []
+		},
+		{
+			"name": "Reload Templates",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/templates/reload",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"templates",
+						"reload"
+					]
+				},
+				"description": "Reload templates from disk without restarting server. Use after updating template files."
+			},
+			"response": []
+		},
+		{
+			"name": "List Endpoints",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/endpoints",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"endpoints"
+					]
+				},
+				"description": "List all available endpoint configurations from configuration.json"
+			},
+			"response": []
+		},
+		{
+			"name": "Reload Endpoints",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/endpoints/reload",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"endpoints",
+						"reload"
+					]
+				},
+				"description": "Reload endpoint configuration from configuration.json without restarting server. Use after updating configuration.json."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Endpoint Configuration",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/endpoints/config",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"endpoints",
+						"config"
+					]
+				},
+				"description": "Get current endpoint configuration (base_url and default headers)"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Endpoint Configuration",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_url\": \"https://tests.sc.ma.co\",\n    \"headers\": {\n        \"SelectedOrganization\": \"MA-038\",\n        \"SelectedLocation\": \"MA-038\",\n        \"Authorization\": \"Bearer {{auth_token}}\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/endpoints/config",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"endpoints",
+						"config"
+					]
+				},
+				"description": "Update endpoint configuration for the current session (does not modify configuration.json)"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Endpoint Details",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/endpoints/asn_lpn_level",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"endpoints",
+						"asn_lpn_level"
+					]
+				},
+				"description": "Get detailed information about a specific endpoint"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate and Send - Template Names",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 1,\n    \"endpoint_template_name\": \"asn_lpn_level\",\n    \"auth_token\": \"{{auth_token}}\",\n    \"selectedOrganization\": \"MA-038\",\n    \"selectedLocation\": \"MA-038\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate-and-send",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate-and-send"
+					]
+				},
+				"description": "Generate data using template names and send to configured endpoint. Uses endpoint_template_name from configuration.json. Optional auth_token, selectedOrganization, selectedLocation, base_url, endpoint_path, and headers can override config."
+			},
+			"response": []
+		},
+		{
+			"name": "Generate and Send - With Header Overrides",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 1,\n    \"endpoint_template_name\": \"asn_lpn_level\",\n    \"auth_token\": \"{{auth_token}}\",\n    \"selectedOrganization\": \"MA-038\",\n    \"selectedLocation\": \"MA-038\",\n    \"base_url\": \"https://custom-url.com\",\n    \"headers\": {\n        \"Custom-Header\": \"value\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate-and-send",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate-and-send"
+					]
+				},
+				"description": "Generate and send with custom headers, base_url, and organization/location overrides"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate and Send - Default Endpoint",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 1,\n    \"auth_token\": \"{{auth_token}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate-and-send",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate-and-send"
+					]
+				},
+				"description": "Generate and send data. Uses base_template name to find endpoint config. Optional auth_token overrides config."
+			},
+			"response": []
+		},
+		{
+			"name": "Generate and Send - NDC ASN CAS",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 1,\n    \"endpoint_template_name\": \"asn_lpn_level\",\n    \"auth_token\": \"{{auth_token}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate-and-send",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate-and-send"
+					]
+				},
+				"description": "Generate 1 NDC ASN CAS record and send to asn_lpn_level endpoint"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate and Send - NDC ASN PCL",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_pcl\",\n    \"generation_template\": \"ndc_asn_pcl\",\n    \"count\": 1,\n    \"endpoint_template_name\": \"asn_lpn_level\",\n    \"auth_token\": \"{{auth_token}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate-and-send",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate-and-send"
+					]
+				},
+				"description": "Generate 1 NDC ASN PCL record and send to asn_lpn_level endpoint"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate - Template Names",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 3\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Generate data using template names from repository"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate - Inline Templates",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": {\n        \"AsnId\": null,\n        \"DestinationFacilityId\": null,\n        \"EstimatedDeliveryDate\": null,\n        \"Lpn\": [\n            {\n                \"LpnId\": null,\n                \"EstimatedWeight\": null,\n                \"LpnDetail\": [\n                    {\n                        \"ItemId\": null,\n                        \"ShippedQuantity\": null\n                    }\n                ]\n            }\n        ]\n    },\n    \"generation_template\": {\n        \"StaticFields\": {\n            \"DestinationFacilityId\": \"TEST-001\"\n        },\n        \"SequenceFields\": {\n            \"AsnId\": \"TEST{{dt}}\"\n        },\n        \"ArrayLengths\": {\n            \"Lpn\": 1,\n            \"Lpn.LpnDetail\": 2\n        },\n        \"RandomFields\": {\n            \"Lpn.EstimatedWeight\": \"float(10,20,2)\",\n            \"Lpn.LpnDetail.ItemId\": \"choiceOrder(ITEM001,ITEM002)\",\n            \"Lpn.LpnDetail.ShippedQuantity\": \"int(5,10)\"\n        }\n    },\n    \"count\": 2,\n    \"template_name\": \"test_template\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Generate data using inline template objects"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate - Mixed (Base Repo, Gen Inline)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": {\n        \"StaticFields\": {\n            \"DestinationFacilityId\": \"CUSTOM-001\"\n        },\n        \"SequenceFields\": {\n            \"AsnId\": \"CUSTOM{{dt}}\"\n        },\n        \"ArrayLengths\": {\n            \"Lpn\": 1,\n            \"Lpn.LpnDetail\": \"int(3,7)\"\n        }\n    },\n    \"count\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Generate using base template from repo and inline generation template"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate - Partial Template",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": {\n        \"template_name\": \"ndc_asn_cas\",\n        \"SequenceFields\": {\n            \"AsnId\": \"BGNDC{{dttm}}*\"\n        }\n    },\n    \"count\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Generate using partial template - override specific sections of repository template. Loads ndc_asn_cas template and merges only the provided SequenceFields."
+			},
+			"response": []
+		},
+		{
+			"name": "Generate - NDC ASN CAS (5 records)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 5\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Generate 5 NDC ASN CAS records"
+			},
+			"response": []
+		},
+		{
+			"name": "Generate - NDC ASN PCL (3 records)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_pcl\",\n    \"generation_template\": \"ndc_asn_pcl\",\n    \"count\": 3\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Generate 3 NDC ASN PCL records"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Missing base_template",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Test error handling - missing base_template"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Invalid count",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"ndc_asn_cas\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": -1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Test error handling - invalid count"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Template not found",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"base_template\": \"nonexistent_template\",\n    \"generation_template\": \"ndc_asn_cas\",\n    \"count\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/generate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"generate"
+					]
+				},
+				"description": "Test error handling - template not found"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Sequence Counters",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/sequence-counters?template_name=ndc_asn_cas",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sequence-counters"
+					],
+					"query": [
+						{
+							"key": "template_name",
+							"value": "ndc_asn_cas",
+							"description": "Optional: filter by template name",
+							"disabled": true
+						}
+					]
+				},
+				"description": "Get all sequence counter values, optionally filtered by template name"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Template Sequence Counters",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/sequence-counters/ndc_asn_cas",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sequence-counters",
+						"ndc_asn_cas"
+					]
+				},
+				"description": "Get sequence counter values for a specific template"
+			},
+			"response": []
+		},
+		{
+			"name": "Reset Template Sequence Counters",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/sequence-counters/ndc_asn_cas",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sequence-counters",
+						"ndc_asn_cas"
+					]
+				},
+				"description": "Reset sequence counters for a specific template"
+			},
+			"response": []
+		},
+		{
+			"name": "Reset All Sequence Counters",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/sequence-counters",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sequence-counters"
+					]
+				},
+				"description": "Reset all sequence counters"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Sequence Counter Enabled Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/sequence-counters/enabled",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sequence-counters",
+						"enabled"
+					]
+				},
+				"description": "Get whether persistent sequence counters are enabled"
+			},
+			"response": []
+		},
+		{
+			"name": "Enable/Disable Sequence Counters",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"enabled\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/sequence-counters/enabled",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sequence-counters",
+						"enabled"
+					]
+				},
+				"description": "Enable or disable persistent sequence counters"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "YOUR_AUTH_TOKEN_HERE",
+			"type": "string"
+		}
+	]
+}

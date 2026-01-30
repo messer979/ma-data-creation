@@ -25,6 +25,22 @@ def render_sidebar():
         if st.button("❓ Help", help="Open Help Guide for Data Creation Tool"):
             guide_modal()
         
+        st.markdown("---")
+        
+        # Sequence Counter Management
+        from components.sequence_counter_ui import render_sequence_counter_toggle, render_sequence_values_button, render_sequence_values_modal
+        
+        st.markdown("### 🔢 Sequence Counters")
+        enabled = render_sequence_counter_toggle()
+        
+        if enabled:
+            # Show sequence values button if enabled
+            if render_sequence_values_button():
+                # Show modal with sequence values
+                render_sequence_values_modal()
+        
+        st.markdown("---")
+        
         # Initialize session state for tracking changes
         if 'last_config_export' not in st.session_state:
             st.session_state['last_config_export'] = None

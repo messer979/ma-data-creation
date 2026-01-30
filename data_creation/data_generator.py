@@ -81,27 +81,54 @@ class DataGenerator:
 
             response.raise_for_status()
 
+            # Parse response - handle both JSON and non-JSON responses
+            response_data = {}
+            if response.content:
+                try:
+                    response_data = response.json()
+                except (ValueError, requests.exceptions.JSONDecodeError):
+                    # Response is not JSON, return as text
+                    response_data = response.text
+
             return {
                 'success': True,
                 'status_code': response.status_code,
-                'response': response.json() if response.content else {},
+                'response': response_data,
                 'response_headers': dict(response.headers),
                 'response_time': response.elapsed.total_seconds(),
                 'request_body': payload
             }
         except requests.exceptions.RequestException as e:
             traceback.print_exc()
-            try:
-                response_payload = e.response.json() 
-            except requests.exceptions.JSONDecodeError:
-                response_payload = e.response.text
+            # Handle cases where e.response might be None (connection errors, timeouts, etc.)
+            response_payload = None
+            status_code = None
+            response_headers = {}
+            response_time = None
+            
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    response_payload = e.response.json() 
+                except (requests.exceptions.JSONDecodeError, AttributeError):
+                    try:
+                        response_payload = e.response.text
+                    except AttributeError:
+                        response_payload = str(e)
+                
+                status_code = getattr(e.response, 'status_code', None)
+                response_headers = dict(e.response.headers) if hasattr(e.response, 'headers') else {}
+                response_time = e.response.elapsed.total_seconds() if hasattr(e.response, 'elapsed') else None
+            else:
+                # No response object (connection error, timeout, etc.)
+                response_payload = str(e)
+            
             return {
                 'success': False,
                 'error': str(e),
-                'status_code': getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None,
-                'response_headers': dict(e.response.headers),
+                'status_code': status_code,
+                'response_headers': response_headers,
                 'response': response_payload,
-                'response_time': e.response.elapsed.total_seconds(),
+                'response_time': response_time,
                 'request_body': payload
             }
     

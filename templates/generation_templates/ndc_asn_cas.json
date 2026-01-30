@@ -1,0 +1,66 @@
+{
+	"StaticFields": {
+	  "AsnLevelId": "LPN",
+	  "DestinationFacilityId": "MA-038",
+	  "OriginFacilityId": "DC0087",
+	  "AsnOriginTypeId": "W",
+	  "Canceled": false,
+	  "AsnStatus": "1000",
+	  "Lpn.Extended.CrossDockType": "CAS",
+	  "Lpn.LpnStatus": "1000",
+	  "Lpn.Canceled": false,
+	  "Lpn.LpnDetail.QuantityUomId": "UNIT",
+	  "Lpn.LpnDetail.Extended.VendorNbr": "DC0087",
+	  "Lpn.LpnDetail.Extended.PackageType": "CAS",
+	  "Lpn.LpnDetail.LpnDetailStatus": "1000",
+	  "Lpn.LpnDetail.InventoryAttribute1": "ALL",
+	  "Extended.BillOfLadingNumber": "NDCASN0001",
+	  "Extended.NonManufVendor": "TR",
+	  "Extended.POType": "ZEL",
+	  "Lpn.VolumeUomId": "cuin",
+	  "Lpn.WeightUomId": "lb"
+	},
+	"SequenceFields": {
+	  "AsnId": "BGCAS{{dttm}}*",
+	  "Lpn.LpnId": "substr({{AsnId}},0,17)*",
+	  "Lpn.LpnDetail.Extended.OriginalNDCLpnId": "substr({{AsnId}},0,17)*"
+	},
+	"ArrayLengths": {
+	  "Lpn": 1,
+	  "Lpn.LpnDetail": "int(10,20)"
+	},
+	"RandomFields": {
+	  "Lpn.EstimatedWeight": "float(250,600,2)",
+	  "Lpn.Volume": "float(1100,1900,3)",
+	  "EstimatedDeliveryDate": "date(now)",
+	  "Lpn.LpnDetail.PurchaseOrderId": "choiceOrder(NDCPOA21,NDCPOA21,NDCPOA21,NDCPOA22,NDCPOA22)",
+	  "Lpn.LpnDetail.ItemId": "choiceOrder(10000305,10000305,10000305,10000102)",
+	  "Lpn.LpnDetail.ShippedQuantity": "choiceOrder(24,24,24,24)",
+	  "Lpn.LpnDetail.PurchaseOrderLineId": "choiceOrder(01,01,01,04)"
+	},
+	"LinkedFields": {
+	  "AsnId": [
+		"Lpn.LpnDetail.Extended.ShipmentNumber",
+		"Lpn.LpnDetail.Extended.VendorASNNbr",
+		"Lpn.AsnId"
+	  ],
+	  "Lpn.LpnDetail.ShippedQuantity": [
+		"Lpn.LpnDetail.StandardPackQuantity",
+		"Lpn.LpnDetail.Extended.InnerPackQuantity",
+		"Lpn.LpnDetail.Extended.OriginalQty"
+	  ],
+	  "Lpn.LpnId": [
+		"Lpn.Extended.OriginalNDCPalletId"
+	  ],
+	  "Lpn.Volume": [
+		"Lpn.LpnDetail.Extended.Volume"
+	  ],
+	  "Lpn.EstimatedWeight": [
+		"Lpn.LpnDetail.Extended.EstimatedWeight",
+		"Lpn.LpnDetail.Extended.ActualWeight"
+	  ],
+	  "EstimatedDeliveryDate": [
+		"Lpn.LpnDetail.Extended.Misc1"
+	  ]
+	}
+  }

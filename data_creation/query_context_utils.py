@@ -3,9 +3,29 @@ Query Context Utilities
 Provides utility functions for accessing stored query results in template generation
 """
 
-import streamlit as st
 import pandas as pd
 from typing import Optional, List, Dict, Any
+
+# Handle Streamlit import gracefully for API mode
+try:
+    import streamlit as st
+    STREAMLIT_AVAILABLE = True
+except ImportError:
+    STREAMLIT_AVAILABLE = False
+    # Create a mock session state for API mode
+    class MockSessionState:
+        def __init__(self):
+            self._data = {}
+        def get(self, key, default=None):
+            return self._data.get(key, default)
+        def __setitem__(self, key, value):
+            self._data[key] = value
+        def __contains__(self, key):
+            return key in self._data
+        def __delitem__(self, key):
+            if key in self._data:
+                del self._data[key]
+    st = type('MockStreamlit', (), {'session_state': MockSessionState()})()
 
 
 def get_query_dataframe(query_name: str) -> Optional[pd.DataFrame]:
@@ -192,3 +212,79 @@ def get_query_summary() -> Dict[str, Dict[str, Any]]:
         }
     
     return summary
+
+
+def load_csv_to_query_context(query_name: str, file_path: str) -> bool:
+    """
+    Load a CSV file into the query context as a DataFrame.
+    
+    Args:
+        query_name: The name to assign to this query result.
+        file_path: The path to the CSV file.
+        
+    Returns:
+        True if successful, False otherwise.
+    """
+    if not os.path.exists(file_path):
+        return False
+    
+    try:
+        df = pd.read_csv(file_path)
+        
+        if 'query_dataframes' not in st.session_state:
+            st.session_state['query_dataframes'] = {}
+        
+        from datetime import datetime
+        st.session_state['query_dataframes'][query_name] = {
+            'dataframe': df,
+            'row_count': len(df),
+            'column_count': len(df.columns),
+            'columns': df.columns.tolist(),
+            'created_at': datetime.now().isoformat(),
+            'query_time': 0.0, # Not applicable for CSV load
+            'source': f"CSV: {os.path.basename(file_path)}"
+        }
+        return True
+    except Exception as e:
+        # Handle CSV parsing errors
+        return False
+
+
+def load_csv_as_query(query_name: str, csv_file_path: str, source: str = "csv") -> bool:
+    """
+    ENHANCEMENT 4: Load a CSV file as a query result for use in QueryContextFields.
+    This allows manual item data profiles to be uploaded instead of executing API queries.
+    
+    Args:
+        query_name: Name to assign to this query result (used in QueryContextFields)
+        csv_file_path: Path to the CSV file to load
+        source: Source identifier (default: "csv")
+    
+    Returns:
+        True if CSV loaded successfully, False otherwise
+    """
+    try:
+        # Read CSV file
+        df = pd.read_csv(csv_file_path)
+        
+        # Initialize query_dataframes in session state if not exists
+        if 'query_dataframes' not in st.session_state:
+            st.session_state['query_dataframes'] = {}
+        
+        # Store the DataFrame with metadata (same structure as API queries)
+        from datetime import datetime
+        st.session_state['query_dataframes'][query_name] = {
+            'dataframe': df,
+            'row_count': len(df),
+            'columns': list(df.columns),
+            'created_at': datetime.now().isoformat(),
+            'query_time': 0.0,  # CSV load time (could measure if needed)
+            'source': source,
+            'query': f"CSV: {csv_file_path}"  # Store source info
+        }
+        
+        return True
+    except Exception as e:
+        # Log error but don't raise (could use logging)
+        print(f"Error loading CSV as query '{query_name}': {str(e)}")
+        return False

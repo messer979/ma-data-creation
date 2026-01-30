@@ -161,17 +161,24 @@ def guide_modal():
             "IsEnabled": true
         }
         ```
-          **🔢 SequenceFields:** Auto-incrementing values
+          **🔢 SequenceFields:** Auto-incrementing values with persistent counters
         ```json
         "SequenceFields": {
-            "ItemId": "CM_ITEM",
-            "OrderId": "ORDER_{{dttm}}"
+            "AsnId": "BGNDCCAS{{dt}}*",
+            "Lpn.LpnId": "{{AsnId}}*",
+            "Lpn.LpnDetail.Extended.OriginalNDCLpnId": "substr({{Lpn.LpnId}},0,17)*"
         }
         ```
-        - `{{dttm}}` gets replaced with current date MMDD format
-        - Fields increment automatically: `CM_ITEM_001`, `CM_ITEM_002`, etc.
-        - **Array fields** increment per-record: Each ASN's lines start at 1
-        - **Array length support**: Compatible with `ArrayLengths` specification
+        **Features:**
+        - `{{dt}}` gets replaced with current date (YYYYMMDD format)
+        - `{{dttm}}` gets replaced with current datetime (YYYYMMDDHHMMSS format)
+        - Fields increment automatically: `BGNDCCAS0127001`, `BGNDCCAS0127002`, etc.
+        - **Underscore Control**: Append `*` to exclude underscore (e.g., `BGNDCCAS0127001` vs `BGNDCCAS0127_001`)
+        - **Attribute References**: Use `{{FieldName}}` to reference other field values
+        - **Substring Function**: Use `substr({{FieldName}},start,length)` to extract portions of values
+        - **Persistent Counters**: When enabled, counters persist across generation requests
+        - **Array fields**: Use dot notation directly (e.g., `Lpn.LpnId`) - no need to specify array indices
+        - **Global Increment**: Sequence fields in arrays increment globally across all records
         
         **🎲 RandomFields:** Random values based on type (Key-Value Format)
         ```json
@@ -234,15 +241,18 @@ def guide_modal():
           **📊 ArrayLengths:** Define array sizes for automatic expansion
         ```json
         "ArrayLengths": {
-            "AsnLine": 2,
-            "OrderLines": 3,
-            "Lpn.LpnDetail": "int(1,5)"
+            "Lpn": 1,
+            "Lpn.LpnDetail": "int(5,15)",
+            "OrderLines": "choiceOrder(3,5,7)"
         }
         ```
-        - When defined, `AsnLine.ItemId` automatically applies to all array elements
-        - No need to manually specify `AsnLine.0.ItemId`, `AsnLine.1.ItemId`
-        - **Dynamic lengths**: Use `int(min,max)` for random array sizes
-        - **Nested arrays**: Supports dot notation (e.g., `Lpn.LpnDetail`)
+        **Features:**
+        - **Static Length**: Use integer (e.g., `1`, `10`) for fixed array sizes
+        - **Variable Length**: Use `int(min,max)` for random array sizes between min and max
+        - **Sequential Choice**: Use `choiceOrder(val1,val2,...)` to cycle through lengths across records
+        - **Dot Notation**: Use dot notation (e.g., `Lpn.LpnDetail`) for nested arrays
+        - **Auto-Expansion**: When defined, `Lpn.LpnDetail.ItemId` automatically applies to all array elements
+        - **No Manual Indices**: No need to specify `Lpn.0.LpnId` or `Lpn.LpnDetail.0.ItemId` - use dot notation directly
           ### Field Types:
         - `int(min,max)` - Random integer between min and max
         - `int(length)` - Random integer with specific digit length (e.g., `int(5)` = 5-digit number)
@@ -276,6 +286,35 @@ def guide_modal():
         - `Address.City` - City field in Address object
         - `AsnLine.ItemId` - ItemId in AsnLine array (auto-expands with ArrayLengths)
         - `Lpn.LpnDetail.QuantityUomId` - Multi-level nested arrays (up to 4 levels)
+        
+        ### 🔢 Persistent Sequence Counters:
+        - **Enable in Sidebar**: Toggle "Store Sequence Counter Values" to enable persistence
+        - **View Counters**: Click "Sequence Values" button to see current counter values
+        - **Reset Options**: Reset counters for specific templates or all templates
+        - **Prevents Duplicates**: Counters continue incrementing across generation requests
+        - **Session-Based**: Counters persist within your browser session
+        - **Use Case**: Generate multiple ASN batches without duplicate LPN IDs
+        
+        **Example:**
+        - Generate 3 ASNs with `Lpn.LpnId` starting at `BGNDCCAS0127001`
+        - Generate 3 more ASNs - they continue from `BGNDCCAS0127004` (not reset to 001)
+        - Prevents SQL duplicate key exceptions when importing multiple batches
+        
+        ### 📝 Template Format Notes:
+        - **Dot Notation**: Use dot notation directly (e.g., `Lpn.LpnId`) - no need to specify array indices
+        - **Nested Objects**: No need to specify nested object structures - arrays are handled automatically via `ArrayLengths`
+        - **Partial Templates (API)**: In API mode, you can pass partial templates with `template_name` to override specific sections
+        
+        **API Partial Template Example:**
+        ```json
+        {
+            "template_name": "ndc_asn_cas",
+            "SequenceFields": {
+                "AsnId": "BGNDC{{dttm}}*"
+            }
+        }
+        ```
+        This loads the full template from repository and merges only the provided sections.
         
         ### 💾 Session-Only Storage:
         - **All generation templates** stored in browser session only

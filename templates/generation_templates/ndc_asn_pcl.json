@@ -1,0 +1,66 @@
+{
+	"StaticFields": {
+		"AsnLevelId": "LPN",
+		"DestinationFacilityId": "MA-038",
+		"OriginFacilityId": "DC0087",
+		"AsnOriginTypeId": "W",
+		"Canceled": false,
+		"AsnStatus": "1000",
+		"Lpn.LpnStatus": "1000",
+		"Lpn.Canceled": false,
+		"Lpn.VolumeUomId": "cuin",
+		"Lpn.WeightUomId": "lb",
+		"Lpn.LpnDetail.QuantityUomId": "UNIT",
+		"Lpn.LpnDetail.InventoryAttribute1": "ALL",
+		"Lpn.LpnDetail.LpnDetailStatus": "1000",
+		"Lpn.LpnDetail.Extended.VendorNbr": "DC0087",
+		"Extended.BillOfLadingNumber": "NDCASNPCL0001",
+		"Extended.NonManufVendor": "TR",
+		"Extended.POType": "ZEL",
+		"Lpn.Extended.CrossDockType": "PCL",
+		"Lpn.LpnDetail.Extended.PackageType": "PCL",
+		"Lpn.LpnDetail.StandardPackQuantity": 1,
+		"Lpn.LpnDetail.Extended.OriginalNDCLpnId": null
+	},
+	"SequenceFields": {
+		"AsnId": "BGNDCPCL{{dt}}",
+		"Lpn.LpnId": "{{AsnId}}*"
+	},
+	"ArrayLengths": {
+		"Lpn": 1,
+		"Lpn.LpnDetail": "choiceOrder(3,5,7)"
+	},
+	"RandomFields": {
+		"EstimatedDeliveryDate": "date(now)",
+		"Lpn.EstimatedWeight": "float(10,30,2)",
+		"Lpn.Volume": "float(1400,2600,3)",
+		"Lpn.LpnDetail.ItemId": "choiceOrder(10000305,10000305,10000102)",
+		"Lpn.LpnDetail.PurchaseOrderId": "choiceOrder(0381131769,0381131770,0381131969)",
+		"Lpn.LpnDetail.PurchaseOrderLineId": "choiceOrder(2,1,3)",
+		"Lpn.LpnDetail.ShippedQuantity": "int(2,16)",
+		"Lpn.LpnDetail.Extended.InnerPackQuantity": "choiceOrder(48,48,24)"
+	},
+	"LinkedFields": {
+		"AsnId": [
+			"Lpn.AsnId",
+			"Lpn.LpnDetail.Extended.ShipmentNumber",
+			"Lpn.LpnDetail.Extended.VendorASNNbr"
+		],
+		"Lpn.LpnDetail.ShippedQuantity": [
+			"Lpn.LpnDetail.Extended.OriginalQty"
+		],
+		"Lpn.LpnId": [
+			"Lpn.Extended.OriginalNDCPalletId"
+		],
+		"Lpn.Volume": [
+			"Lpn.LpnDetail.Extended.Volume"
+		],
+		"Lpn.EstimatedWeight": [
+			"Lpn.LpnDetail.Extended.EstimatedWeight",
+			"Lpn.LpnDetail.Extended.ActualWeight"
+		],
+		"EstimatedDeliveryDate": [
+			"Lpn.LpnDetail.Extended.Misc1"
+		]
+	}
+}

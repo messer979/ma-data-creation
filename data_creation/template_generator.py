@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
 from data_creation.template_functions import create_record_from_template
+from data_creation.sequence_counter_manager import SequenceCounterManager
 from colorama import Fore, Back, Style, init, just_fix_windows_console
 from termcolor import colored
 # Initialize colorama
@@ -26,6 +27,7 @@ class TemplateGenerator:
         self.templates_dir = generation_templates_dir
         self.session_key = "session_generation_templates"
         self.examples_loaded_key = "session_generation_examples_loaded"
+        self.counter_manager = SequenceCounterManager(use_streamlit=True)
         self._ensure_session_templates()
     
     def _ensure_session_templates(self):
@@ -92,10 +94,30 @@ class TemplateGenerator:
         records = []
         
         # Track sequence field counters across all records
+        # Use persistent counters if enabled, otherwise use local dict
+        sequence_fields = generation_template.get('SequenceFields', {})
         sequence_counters = {}
+        
+        if self.counter_manager.is_enabled():
+            # Initialize counters from persistent storage
+            # Start from the last used value, so next increment will be correct
+            for field_name in sequence_fields.keys():
+                current_value = self.counter_manager.get_counter(template_name, field_name)
+                if current_value is not None:
+                    # Start from the last used value (it will be incremented in the loop)
+                    sequence_counters[field_name] = current_value
+                else:
+                    # Initialize to 0 so first increment gives 1
+                    sequence_counters[field_name] = 0
+        else:
+            # Not using persistent counters - initialize to empty (will start at 1 on first use)
+            pass
         
         # Shared unique context for tracking uniqueness across ALL records
         shared_unique_context = {}
+        
+        # ENHANCEMENT 2: Shared context for choiceOrder array lengths across all records
+        array_length_choice_context = {}
         
         for i in range(count):
             record = create_record_from_template(
@@ -104,9 +126,15 @@ class TemplateGenerator:
                 i,
                 sequence_counters,
                 global_config,
-                shared_unique_context  # Pass the shared context to maintain uniqueness across records
+                shared_unique_context,  # Pass the shared context to maintain uniqueness across records
+                array_length_choice_context  # Pass shared context for array length choiceOrder
             )
             records.append(record)
+        
+        # Save counters back to persistent storage if enabled
+        if self.counter_manager.is_enabled():
+            for field_name, counter_value in sequence_counters.items():
+                self.counter_manager.set_counter(template_name, field_name, counter_value)
         
         return records
     

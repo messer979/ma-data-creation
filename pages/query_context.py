@@ -17,6 +17,7 @@ import time
 from components.sidebar import render_sidebar
 from components.wiretap import query_execution_wrapper
 from config import load_initial_config_to_session
+from data_creation.query_context_utils import load_csv_as_query
 
 
 def load_dev_query_context() -> Dict[str, Any]:
@@ -87,78 +88,146 @@ def store_query_result_as_dataframe(query_result: pd.DataFrame, query_name: str)
         return False
 
 
+def render_csv_upload_interface():
+    """Render the CSV upload interface"""
+    st.subheader("📤 Upload CSV File")
+    st.markdown("Upload a CSV file to use as query context data. This is useful for manual item data profiles or offline template generation.")
+    
+    # CSV file uploader
+    uploaded_file = st.file_uploader(
+        "Choose a CSV file",
+        type=['csv'],
+        help="Upload a CSV file with your data profiles (e.g., item profiles, facility data, etc.)"
+    )
+    
+    if uploaded_file is not None:
+        # Query name input for CSV
+        csv_query_name = st.text_input(
+            "Query Name for CSV",
+            value="",
+            placeholder="Enter a name for this CSV data (e.g., 'item_profiles', 'facilities')",
+            help="Give this CSV data a meaningful name to reference it in templates",
+            key="csv_query_name"
+        )
+        
+        col1, col2 = st.columns([2, 8])
+        with col1:
+            if st.button("📥 Load CSV as Query", type="primary", disabled=not csv_query_name.strip()):
+                try:
+                    # Save uploaded file temporarily
+                    import tempfile
+                    import os
+                    
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv', mode='wb') as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_file_path = tmp_file.name
+                    
+                    # Load CSV using the utility function
+                    if load_csv_as_query(csv_query_name, tmp_file_path, source=f"CSV: {uploaded_file.name}"):
+                        st.success(f"✅ CSV '{csv_query_name}' loaded successfully! {len(pd.read_csv(tmp_file_path))} rows loaded")
+                        # Clean up temp file
+                        os.unlink(tmp_file_path)
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to load CSV file. Please check the file format.")
+                        os.unlink(tmp_file_path)
+                except Exception as e:
+                    st.error(f"❌ Error loading CSV: {str(e)}")
+                    if 'tmp_file_path' in locals():
+                        try:
+                            os.unlink(tmp_file_path)
+                        except:
+                            pass
+        
+        # Show preview if file is uploaded
+        if uploaded_file is not None:
+            try:
+                df_preview = pd.read_csv(uploaded_file)
+                st.markdown("**CSV Preview (first 5 rows):**")
+                st.dataframe(df_preview.head(5), use_container_width=True)
+                st.caption(f"Total rows: {len(df_preview)}, Columns: {', '.join(df_preview.columns.tolist()[:5])}{'...' if len(df_preview.columns) > 5 else ''}")
+                # Reset file pointer for potential reload
+                uploaded_file.seek(0)
+            except Exception as e:
+                st.error(f"Error reading CSV preview: {str(e)}")
+
+
 def render_query_interface():
     """Render the main query interface"""
     st.header("🔍 Query Context Data")
-    st.markdown("Execute SQL queries against your target environment to gather context data for template generation.")
+    st.markdown("Execute SQL queries against your target environment or upload CSV files to gather context data for template generation.")
     
-    # Check if base URL is configured
-    base_url = st.session_state.get('base_url', '')
-    if not base_url:
-        st.warning("⚠️ Base URL not configured. Please configure your base URL in the sidebar.")
-        return
+    # Create tabs for SQL Query and CSV Upload
+    query_tab, csv_tab = st.tabs(["🔍 SQL Query", "📤 CSV Upload"])
     
-    # Load dev queries
-    dev_query_context = load_dev_query_context()
-    if dev_query_context != {}:
-        st.session_state['selected_query_name'] = dev_query_context['name']
-        st.session_state['formatted_sql_value'] = dev_query_context['query']
+    with query_tab:
+        # Check if base URL is configured
+        base_url = st.session_state.get('base_url', '')
+        if not base_url:
+            st.warning("⚠️ Base URL not configured. Please configure your base URL in the sidebar.")
+        else:
+            # Load dev queries
+            dev_query_context = load_dev_query_context()
+            if dev_query_context != {}:
+                st.session_state['selected_query_name'] = dev_query_context['name']
+                st.session_state['formatted_sql_value'] = dev_query_context['query']
 
-    # Query input section
-    st.subheader("📝 SQL Query")
+            # Query input section
+            st.subheader("📝 SQL Query")
 
-    if 'formatted_sql_value' not in st.session_state:
-        st.session_state['formatted_sql_value'] = "SELECT ii.ITEM_ID, ii.PROFILE_ID, ip.STANDARD, MAX(CASE WHEN ip.UOM_ID = 'units' THEN ip.QUANTITY END) AS UNITS_QUANTITY, MAX(CASE WHEN ip.UOM_ID = 'packs' THEN ip.QUANTITY END) AS PACKS_QUANTITY FROM default_item_master.ITE_ITEM ii INNER JOIN default_item_master.ITE_ITEM_PACKAGE ip ON ip.ITEM_PK = ii.PK AND ip.STANDARD = 1 GROUP BY ii.ITEM_ID limit 1000"
+            if 'formatted_sql_value' not in st.session_state:
+                st.session_state['formatted_sql_value'] = "SELECT ii.ITEM_ID, ii.PROFILE_ID, ip.STANDARD, MAX(CASE WHEN ip.UOM_ID = 'units' THEN ip.QUANTITY END) AS UNITS_QUANTITY, MAX(CASE WHEN ip.UOM_ID = 'packs' THEN ip.QUANTITY END) AS PACKS_QUANTITY FROM default_item_master.ITE_ITEM ii INNER JOIN default_item_master.ITE_ITEM_PACKAGE ip ON ip.ITEM_PK = ii.PK AND ip.STANDARD = 1 GROUP BY ii.ITEM_ID limit 1000"
+            
+            # Query name input
+            default_name = st.session_state.get('selected_query_name', 'items')
+            query_name = st.text_input(
+                "Query Name",
+                value=default_name,
+                placeholder="Enter a name for this query (e.g., 'active_facilities', 'available_items')",
+                help="Give this query a meaningful name to reference it in templates"
+            )
+            
+            # SQL Query text area
+            current_sql_value = st.session_state['formatted_sql_value']
+            sql_query = st_ace(
+                value=current_sql_value,
+                language='sql',
+                theme=st.session_state.get('ace_theme', 'github'),
+                height=200,
+                auto_update=False,
+                wrap=True,
+                annotations=None,
+                placeholder="Enter your SQL query here...",
+                show_gutter=True,
+                show_print_margin=True
+            )
+
+            # Execute button
+            col1, col2, col3 = st.columns([2, 2, 6])
+            organization = st.text_input(
+                "Organization",
+                value=st.session_state.get('selected_organization'),
+                help="Organization ID for the query execution"
+            )
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": st.session_state.get('shared_token', ''),
+                "Organization": organization
+            }
+
+            with col1:
+                if st.button("🚀 Execute Query", type="primary", disabled=not (sql_query.strip() and query_name.strip())):
+                    execute_query_workflow(sql_query, base_url, headers, query_name)
+            
+            with col2:
+                if st.button("🗑️ Clear Results", help="Clear all stored query results"):
+                    if 'query_dataframes' in st.session_state:
+                        del st.session_state['query_dataframes']
+                    st.success("✅ Query results cleared!")
+                    st.rerun()
     
-    # Show available dev queries if they exist
-
-    # Query name input
-    default_name = st.session_state.get('selected_query_name', 'items')
-    query_name = st.text_input(
-        "Query Name",
-        value=default_name,
-        placeholder="Enter a name for this query (e.g., 'active_facilities', 'available_items')",
-        help="Give this query a meaningful name to reference it in templates"
-    )
-    
-    # SQL Query text area
-    current_sql_value = st.session_state['formatted_sql_value']
-    sql_query = st_ace(
-        value=current_sql_value,
-        language='sql',
-        theme=st.session_state.get('ace_theme', 'github'),
-        height=200,
-        auto_update=False,
-        wrap=True,
-        annotations=None,
-        placeholder="Enter your SQL query here...",
-        show_gutter=True,
-        
-        show_print_margin=True
-    )
-
-    # Execute button
-    col1, col2, col3 = st.columns([2, 2, 6])
-    organization = st.text_input(
-        "Organization",
-        value=st.session_state.get('selected_organization'),
-        help="Organization ID for the query execution"
-    )
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": st.session_state.get('shared_token', ''),
-        "Organization": organization
-    }
-
-    with col1:
-        if st.button("🚀 Execute Query", type="primary", disabled=not (sql_query.strip() and query_name.strip())):
-            execute_query_workflow(sql_query, base_url, headers, query_name)
-    
-    with col2:
-        if st.button("🗑️ Clear Results", help="Clear all stored query results"):
-            if 'query_dataframes' in st.session_state:
-                del st.session_state['query_dataframes']
-            st.success("✅ Query results cleared!")
+    with csv_tab:
+        render_csv_upload_interface()
 
 
 def execute_query_workflow(sql_query, base_url, headers, query_name):
@@ -193,24 +262,41 @@ def render_stored_queries():
     query_dataframes = st.session_state.get('query_dataframes', {})
     
     if not query_dataframes:
-        st.info("No query results stored yet. Execute a query above to see results here.")
+        st.info("No query results stored yet. Execute a SQL query or upload a CSV file above to see results here.")
         return
     
     # Show summary of stored queries
     st.markdown(f"**{len(query_dataframes)} query result(s) available for template generation:**")
     
     for query_name, query_info in query_dataframes.items():
-        with st.expander(f"📋 {query_name} ({query_info['row_count']} rows)", expanded=False):
+        # Determine source type for display
+        source_type = query_info.get('source', 'API')
+        source_label = "📤 CSV" if source_type.startswith('CSV') else "🔍 SQL"
+        
+        with st.expander(f"{source_label} {query_name} ({query_info['row_count']} rows)", expanded=False):
             df = query_info['dataframe']
             
             # Query metadata
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Rows", query_info['row_count'])
             with col2:
                 st.metric("Columns", len(query_info['columns']))
             with col3:
-                st.caption(f"Created: {query_info['created_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+                # Handle both datetime objects and ISO strings
+                created_at = query_info.get('created_at')
+                if isinstance(created_at, str):
+                    created_at_str = created_at
+                elif hasattr(created_at, 'strftime'):
+                    created_at_str = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    created_at_str = str(created_at)
+                st.caption(f"Created: {created_at_str}")
+            with col4:
+                if source_type.startswith('CSV'):
+                    st.caption(f"Source: CSV File")
+                else:
+                    st.caption(f"Source: SQL Query")
             
             # Show column information
             if query_info['columns']:
